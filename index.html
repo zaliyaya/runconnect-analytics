@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Пульс RunConnect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: одна колонка до 1180px; сверху сводка и выводы, ниже KPI-ряд и разделы «Рост», «Продукт», «Качество», «Данные». */
+:root{
+  --bg:#f6f7f7; --surface:#ffffff; --ink:#111617; --ink-2:#465254; --muted:#788486;
+  --line:#e2e7e7; --line-2:#cfd6d6; --accent:#0e6b73; --accent-soft:#e3f1f1;
+  --up:#006300; --down:#b42f2f; --warn-ink:#8a5a00;
+  --s-ios:#2a78d6; --s-android:#eb6834; --s-tg:#1baf7a; --s-other:#b4bdbe;
+  --st-good:#0ca30c; --st-warn:#fab219; --st-crit:#d03b3b;
+  --f-display:"Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body:"Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1213; --surface:#161b1c; --ink:#f1f5f5; --ink-2:#b9c4c5; --muted:#879395;
+  --line:#263032; --line-2:#344042; --accent:#5cc0c7; --accent-soft:#16312f;
+  --up:#3fbf3f; --down:#f07575; --warn-ink:#f2c05a;
+  --s-ios:#3987e5; --s-android:#d95926; --s-tg:#199e70; --s-other:#4d585a; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0e1213; --surface:#161b1c; --ink:#f1f5f5; --ink-2:#b9c4c5; --muted:#879395;
+  --line:#263032; --line-2:#344042; --accent:#5cc0c7; --accent-soft:#16312f;
+  --up:#3fbf3f; --down:#f07575; --warn-ink:#f2c05a;
+  --s-ios:#3987e5; --s-android:#d95926; --s-tg:#199e70; --s-other:#4d585a; color-scheme:dark;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 64px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-0.01em}
+h2{font-size:22px;font-weight:600}
+h3{font-size:15px;font-weight:600}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-size:12px;letter-spacing:.02em}
+.eyebrow{font-family:var(--f-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* Header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-inline:-16px;padding:12px 16px}
+.top-in{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:28px;height:28px;border-radius:8px;background:var(--ink);display:grid;place-items:center;flex:none}
+.mark svg{display:block}
+.brand b{font-family:var(--f-display);font-weight:600;font-size:16px}
+.brand span{color:var(--muted);font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;padding:5px 11px;border-radius:999px;font-size:13px;color:var(--ink-2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.seg button:hover:not([aria-pressed="true"]){background:var(--accent-soft);color:var(--ink)}
+.sel{appearance:none;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23788486' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 12px center;border:1px solid var(--line);border-radius:999px;padding:6px 32px 6px 14px;font-size:13px;cursor:pointer}
+
+.custom{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;font-size:13px}
+.custom input[type=date]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px;color:inherit}
+  .custom[hidden]{display:none}
+.tone.flat{background:var(--muted)}
+tr.tot td{font-weight:600;border-top:1px solid var(--line-2)}
+/* Hero */
+.hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:28px;padding-top:28px}
+@media (max-width:900px){.hero{grid-template-columns:1fr}}
+.hero h1{font-size:clamp(28px,4vw,40px);font-weight:600;line-height:1.1}
+.hero .sub{color:var(--ink-2);margin-top:10px;max-width:60ch}
+.summary{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.summary li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;max-width:68ch}
+.tone{width:10px;height:10px;border-radius:50%;margin-top:7px}
+.tone.up{background:var(--st-good)} .tone.down{background:var(--st-crit)} .tone.warn{background:var(--st-warn)}
+.sources{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;align-self:start}
+.src{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13.5px}
+.pill{font-family:var(--f-mono);font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line-2);white-space:nowrap}
+.pill.ok{color:var(--up);border-color:color-mix(in srgb,var(--up) 35%,transparent)}
+.pill.partial{color:var(--warn-ink);border-color:color-mix(in srgb,var(--warn-ink) 40%,transparent)}
+.pill.off{color:var(--down);border-color:color-mix(in srgb,var(--down) 40%,transparent)}
+.src .note{color:var(--muted);font-size:12.5px;text-align:right}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);padding:18px 18px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.kpi .v{font-family:var(--f-display);font-size:34px;font-weight:600;line-height:1.05;letter-spacing:-0.02em}
+.kpi .row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.delta{font-family:var(--f-mono);font-size:12px;padding:1px 7px;border-radius:6px;white-space:nowrap}
+.delta.up{color:var(--up);background:color-mix(in srgb,var(--up) 10%,transparent)}
+.delta.down{color:var(--down);background:color-mix(in srgb,var(--down) 10%,transparent)}
+.delta.flat{color:var(--muted);background:color-mix(in srgb,var(--muted) 12%,transparent)}
+.kpi .prev{color:var(--muted);font-size:12.5px}
+.kpi .spark{height:40px;margin-top:4px}
+.kpi .spark svg{display:block;width:100%;height:40px}
+.kpi .from{color:var(--muted);font-size:11.5px;font-family:var(--f-mono)}
+.flag{font-family:var(--f-mono);font-size:10.5px;color:var(--warn-ink);border:1px dashed color-mix(in srgb,var(--warn-ink) 50%,transparent);border-radius:5px;padding:0 5px}
+
+/* Sections */
+section.block{display:flex;flex-direction:column;gap:18px}
+.bhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px;border-top:1px solid var(--line-2);padding-top:18px}
+.bhead p{color:var(--muted);font-size:13.5px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.grid2{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px}
+.grid2e{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.grid2,.grid2e{grid-template-columns:1fr}}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.phead .mono{color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink-2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--muted);font-family:var(--f-mono);font-size:10.5px}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .base{stroke:var(--line-2);stroke-width:1}
+.hit{cursor:crosshair}
+details.tbl summary{cursor:pointer;color:var(--accent);font-size:13px;margin-top:10px;width:max-content}
+.tscroll{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-family:var(--f-mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+tr.cur td{background:var(--accent-soft)}
+
+/* Funnel */
+.funnel{display:flex;flex-direction:column;gap:10px}
+.fstep{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr) 64px;gap:12px;align-items:center;font-size:13.5px}
+@media (max-width:520px){.fstep{grid-template-columns:minmax(0,1fr) 56px}.fstep .fbar{grid-column:1 / -1;order:3}}
+.fstep .lbl small{display:block;color:var(--muted);font-size:11.5px;font-family:var(--f-mono)}
+.fbar{height:22px;background:var(--bg);border-radius:4px;position:relative;overflow:hidden}
+.fbar b{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:0 4px 4px 0;min-width:2px}
+.fstep .fv{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.fconv{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding-left:2px}
+
+/* Anomalies */
+.anoms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.anoms{grid-template-columns:1fr}}
+.anom{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.anom .m{font-family:var(--f-mono);font-size:12.5px;color:var(--ink-2)}
+.anom ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.tag{font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.anom .next{border-top:1px solid var(--line);padding-top:10px;font-size:14px}
+.strategy{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:900px){.strategy{grid-template-columns:1fr}}
+.strategy div{border-left:2px solid var(--accent);padding:2px 0 2px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--ink-2)}
+.strategy h3{color:var(--ink)}
+
+/* Small multiples */
+.multi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+@media (max-width:860px){.multi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.multi{grid-template-columns:1fr}}
+.mcell{background:var(--surface);padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.mcell .v{font-family:var(--f-display);font-size:24px;font-weight:600}
+.mcell .note{color:var(--muted);font-size:12px}
+
+/* Quality */
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat .v{font-family:var(--f-display);font-size:28px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px}
+.crash{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-top:1px solid var(--line)}
+.crash .w{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.dq{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.dq li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;font-size:14px;align-items:start}
+.lv{font-family:var(--f-mono);font-size:10.5px;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.lv.critical{background:color-mix(in srgb,var(--st-crit) 14%,transparent);color:var(--down)}
+.lv.warn{background:color-mix(in srgb,var(--st-warn) 20%,transparent);color:var(--warn-ink)}
+.lv.info{background:color-mix(in srgb,var(--muted) 14%,transparent);color:var(--ink-2)}
+
+.empty{padding:60px 0;text-align:center;color:var(--ink-2);display:flex;flex-direction:column;gap:8px;align-items:center}
+.muted{color:var(--muted)}
+#tip{position:fixed;pointer-events:none;z-index:20;background:var(--ink);color:var(--surface);font-size:12.5px;line-height:1.4;padding:8px 10px;border-radius:8px;max-width:240px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+#tip b{font-weight:600}
+footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:no-preference){.fbar b{transition:width .4s ease}}
+</style>
+
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1 12 L5 6 L8 9 L11 3 L15 8" fill="none" stroke="var(--surface)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><b>Пульс RunConnect</b> <span>недельный отчёт</span></div>
+    </div>
+    <div class="controls">
+      <div class="seg" id="period" role="group" aria-label="Период">
+        <button type="button" data-v="1" aria-pressed="true">Неделя</button>
+        <button type="button" data-v="4" aria-pressed="false">4 нед</button>
+        <button type="button" data-v="8" aria-pressed="false">8 нед</button>
+        <button type="button" data-v="12" aria-pressed="false">12 нед</button>
+        <button type="button" data-v="26" aria-pressed="false">26 нед</button>
+        <button type="button" data-v="custom" aria-pressed="false">Даты…</button>
+      </div>
+      <div class="seg" id="plat" role="group" aria-label="Платформа">
+        <button type="button" data-v="all" aria-pressed="true">Все</button>
+        <button type="button" data-v="ios" aria-pressed="false">iOS</button>
+        <button type="button" data-v="android" aria-pressed="false">Android</button>
+        <button type="button" data-v="telegram" aria-pressed="false">Telegram</button>
+      </div>
+    </div>
+    <div class="custom" id="customBox" hidden>
+      <label for="dFrom">С</label><input type="date" id="dFrom">
+      <label for="dTo">по</label><input type="date" id="dTo">
+      <span id="snap" class="mono muted"></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="app">
+  <div class="empty" id="loading">
+    <h2>Загружаю данные недели…</h2>
+    <p class="muted">Если страница не отрисовалась, обновите её через минуту.</p>
+  </div>
+</main>
+<div id="tip" hidden></div>
+
+<script>
+(() => {
+const S = { weeks: [], preset: '1', from: '', to: '', plat: 'all' };
+
+const MONTHS = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+const MONTHS_G = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const PL = { ios: 'iOS', android: 'Android', telegram: 'Telegram', other: 'Без платформы' };
+const fmt = n => n == null || Number.isNaN(n) ? '—' : (Math.round(n * 10) / 10).toLocaleString('ru-RU');
+const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : null;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const D = s => new Date(s + 'T00:00:00');
+const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const addDays = (s, n) => { const d = D(s); d.setDate(d.getDate() + n); return iso(d); };
+const monday = s => { const d = D(s); const dow = (d.getDay() + 6) % 7; d.setDate(d.getDate() - dow); return iso(d); };
+const dshort = ws => { const d = D(ws); return d.getDate() + ' ' + MONTHS[d.getMonth()]; };
+const g = (w, path) => path.split('.').reduce((o, k) => o == null ? undefined : o[k], w);
+function rangeLabel(a, b) { // a: первый день, b: последний день
+  const x = D(a), y = D(b);
+  if (x.getFullYear() !== y.getFullYear()) return `${x.getDate()} ${MONTHS_G[x.getMonth()]} ${x.getFullYear()} – ${y.getDate()} ${MONTHS_G[y.getMonth()]} ${y.getFullYear()}`;
+  if (x.getMonth() === y.getMonth()) return `${x.getDate()}–${y.getDate()} ${MONTHS_G[y.getMonth()]}`;
+  return `${x.getDate()} ${MONTHS_G[x.getMonth()]} – ${y.getDate()} ${MONTHS_G[y.getMonth()]}`;
+}
+const weeksWord = n => n % 10 === 1 && n % 100 !== 11 ? 'неделя' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 'недели' : 'недель');
+
+/* ---------- период ---------- */
+function periodIdx() {
+  const n = S.weeks.length, last = n - 1;
+  if (!n) return null;
+  if (S.preset !== 'custom') { const k = +S.preset; return [Math.max(0, last - k + 1), last]; }
+  const f = S.from ? monday(S.from) : S.weeks[0].week, t = S.to ? monday(S.to) : S.weeks[last].week;
+  const a = f <= t ? f : t, b = f <= t ? t : f;
+  let i0 = S.weeks.findIndex(w => w.week >= a), i1 = -1;
+  for (let i = last; i >= 0; i--) if (S.weeks[i].week <= b) { i1 = i; break; }
+  if (i0 < 0 || i1 < 0 || i0 > i1) return null;
+  return [i0, i1];
+}
+
+const SUMS = ['reg','onboarded','activated','ret_d1','ret_w1','sessions','events_created','events_manual','event_joins','clubs_created','club_joins','swipes','matches','messages','new_coaches','del_req','deleted','push_ok','push_err','notif','notif_read'];
+function agg(list) {
+  if (!list || !list.length) return null;
+  const sum = p => list.reduce((s, w) => s + (g(w, p) ?? 0), 0);
+  const has = p => list.some(w => g(w, p) != null);
+  const avg = p => { const v = list.map(w => g(w, p)).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const kpi = {};
+  SUMS.forEach(k => kpi[k] = has('kpi.' + k) ? sum('kpi.' + k) : null);
+  kpi.wau = avg('kpi.wau'); kpi.dau_avg = avg('kpi.dau_avg'); kpi.chat_users = avg('kpi.chat_users');
+  kpi.total_users = g(list[list.length - 1], 'kpi.total_users');
+  const platform = {}; ['ios', 'android', 'telegram', 'other'].forEach(k => platform[k] = sum('platform.' + k));
+  const stores = {}; ['ios_first_downloads', 'ios_page_views', 'ios_impressions'].forEach(k => stores[k] = has('stores.' + k) ? sum('stores.' + k) : null);
+  return { n: list.length, kpi, platform, stores, landing: { visits: has('landing.visits') ? sum('landing.visits') : null },
+    first: list[0].week, lastDay: addDays(list[list.length - 1].week, 6) };
+}
+function regOf(a) { return a == null ? null : (S.plat === 'all' ? a.kpi.reg : (a.platform[S.plat] ?? 0)); }
+
+function delta(cur, prev, invert) {
+  if (cur == null || prev == null) return '<span class="delta flat">нет сравнения</span>';
+  if (prev === 0) return cur === 0 ? '<span class="delta flat">0</span>' : '<span class="delta flat">новое</span>';
+  const d = Math.round((cur - prev) / prev * 100);
+  const good = invert ? d < 0 : d > 0;
+  const cls = d === 0 ? 'flat' : (good ? 'up' : 'down');
+  return `<span class="delta ${cls}">${d > 0 ? '+' : ''}${d}%</span>`;
+}
+
+/* ---------- графики ---------- */
+function spark(vals, labels, sel, fmtv = fmt) {
+  const W = 240, H = 40, n = vals.length;
+  if (!n) return '';
+  const max = Math.max(1, ...vals.map(v => v ?? 0));
+  const x = i => n === 1 ? W / 2 : 3 + i * (W - 6) / (n - 1);
+  const y = v => H - 4 - (v ?? 0) / max * (H - 10);
+  const pts = vals.map((v, i) => [x(i), y(v)]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const area = line + ` L${x(n - 1).toFixed(1)} ${H - 2} L${x(0).toFixed(1)} ${H - 2} Z`;
+  let band = '';
+  if (sel && sel[0] > 0) { const x0 = sel[0] === 0 ? 0 : (x(sel[0] - 1) + x(sel[0])) / 2; band = `<rect x="${x0}" y="0" width="${W - x0}" height="${H}" fill="var(--accent)" fill-opacity=".06"></rect>`; }
+  const last = pts[n - 1];
+  const hits = vals.map((v, i) => { const x0 = i === 0 ? 0 : (x(i - 1) + x(i)) / 2, x1 = i === n - 1 ? W : (x(i) + x(i + 1)) / 2;
+    return `<rect class="hit" x="${x0}" y="0" width="${x1 - x0}" height="${H}" fill="transparent" data-tip="<b>${esc(labels[i])}</b><br>${esc(fmtv(v))}"></rect>`; }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Тренд по неделям">${band}
+    <path d="${area}" fill="var(--accent)" fill-opacity=".10"></path>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+    <circle cx="${last[0]}" cy="${last[1]}" r="3.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"></circle>${hits}</svg>`;
+}
+function niceMax(v) { if (v <= 5) return 5; const p = Math.pow(10, Math.floor(Math.log10(v))); const m = v / p; return (m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; }
+
+function stackedBars(weeks, keys, colors, selFrom) {
+  const W = 720, H = 240, L = 34, B = 26, T = 14, n = weeks.length;
+  const tot = weeks.map(w => keys.reduce((s, k) => s + (g(w, 'platform.' + k) ?? 0), 0));
+  const max = niceMax(Math.max(1, ...tot));
+  const bw = Math.min(40, (W - L) / n * 0.62), step = (W - L) / n;
+  const y = v => H - B - v / max * (H - B - T);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Регистрации по неделям и платформам">`;
+  if (selFrom > 0) s += `<rect x="${L + step * selFrom}" y="${T - 10}" width="${W - L - step * selFrom}" height="${H - B - T + 10}" fill="var(--accent)" fill-opacity=".05"></rect>`;
+  for (let i = 0; i <= 4; i++) { const v = max / 4 * i, yy = y(v); s += `<line class="${i ? 'grid' : 'base'}" x1="${L}" x2="${W}" y1="${yy}" y2="${yy}"></line><text x="${L - 6}" y="${yy + 3.5}" text-anchor="end">${fmt(v)}</text>`; }
+  weeks.forEach((w, i) => {
+    const cx = L + step * i + step / 2; let acc = 0; const segs = [];
+    const dim = i < selFrom ? ' fill-opacity=".35"' : '';
+    keys.forEach(k => { const v = g(w, 'platform.' + k) ?? 0; if (!v) return; segs.push({ k, v, y0: y(acc + v), y1: y(acc) }); acc += v; });
+    segs.forEach((sg, si) => {
+      const top = si === segs.length - 1; const h = Math.max(1, sg.y1 - sg.y0 - (si ? 2 : 0)); const yTop = sg.y0; const r = top ? Math.min(4, h) : 0;
+      s += top ? `<path d="M${cx - bw / 2} ${yTop + h} V${yTop + r} Q${cx - bw / 2} ${yTop} ${cx - bw / 2 + r} ${yTop} H${cx + bw / 2 - r} Q${cx + bw / 2} ${yTop} ${cx + bw / 2} ${yTop + r} V${yTop + h} Z" fill="${colors[sg.k]}"${dim}></path>`
+               : `<rect x="${cx - bw / 2}" y="${yTop}" width="${bw}" height="${h}" fill="${colors[sg.k]}"${dim}></rect>`;
+    });
+    const tip = `<b>${esc(w.label)}</b><br>` + keys.map(k => `${PL[k]}: ${g(w, 'platform.' + k) ?? 0}`).join('<br>') + (keys.length > 1 ? `<br>Всего: ${tot[i]}` : '');
+    s += `<rect class="hit" x="${L + step * i}" y="${T}" width="${step}" height="${H - B - T}" fill="transparent" data-tip="${esc(tip)}"></rect>`;
+    if (tot[i] && n <= 13) s += `<text x="${cx}" y="${y(tot[i]) - 5}" text-anchor="middle" style="fill:var(--ink-2)">${tot[i]}</text>`;
+    const every = Math.ceil(n / 13);
+    if ((n - 1 - i) % every === 0) s += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${dshort(w.week)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+function barsSimple(vals, labels, selFrom, color = 'var(--accent)') {
+  const W = 360, H = 120, B = 18, T = 14, n = vals.length, max = niceMax(Math.max(1, ...vals));
+  const step = W / n, bw = Math.min(22, step * .6); const y = v => H - B - v / max * (H - B - T);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img"><line class="base" x1="0" x2="${W}" y1="${H - B}" y2="${H - B}"></line>`;
+  vals.forEach((v, i) => { const cx = step * i + step / 2, yy = y(v), h = H - B - yy, r = Math.min(4, h);
+    if (v) s += `<path d="M${cx - bw / 2} ${H - B} V${yy + r} Q${cx - bw / 2} ${yy} ${cx - bw / 2 + r} ${yy} H${cx + bw / 2 - r} Q${cx + bw / 2} ${yy} ${cx + bw / 2} ${yy + r} V${H - B} Z" fill="${color}" ${i >= selFrom ? '' : 'fill-opacity=".35"'}></path>`;
+    s += `<rect class="hit" x="${step * i}" y="0" width="${step}" height="${H}" fill="transparent" data-tip="<b>${esc(labels[i])}</b><br>${fmt(v)}"></rect>`;
+  });
+  s += `<text x="2" y="${H - 4}">${esc(String(labels[0]).split(' ').slice(0, 2).join(' '))}</text><text x="${W - 2}" y="${H - 4}" text-anchor="end">${esc(String(labels[n - 1]).split(' ').slice(0, 2).join(' '))}</text>`;
+  return s + '</svg>';
+}
+
+/* ---------- отрисовка ---------- */
+function render() {
+  const app = document.getElementById('app');
+  if (!S.weeks.length) { app.innerHTML = `<div class="empty"><h2>Данных пока нет</h2><p class="muted">Первая неделя появится после ближайшего сбора отчёта.</p></div>`; return; }
+  const pi = periodIdx();
+  if (!pi) { app.innerHTML = `<div class="empty"><h2>За выбранный период данных нет</h2><p class="muted">Данные есть с ${esc(dshort(S.weeks[0].week))} по ${esc(rangeLabel(S.weeks[S.weeks.length - 1].week, addDays(S.weeks[S.weeks.length - 1].week, 6)))}. Выберите даты внутри этого промежутка.</p></div>`; return; }
+  const [i0, i1] = pi, n = i1 - i0 + 1;
+  const sel = S.weeks.slice(i0, i1 + 1), A = agg(sel);
+  const pl = i0 - n >= 0 ? S.weeks.slice(i0 - n, i0) : null, P = agg(pl);
+  // диапазон графиков: сам период, а для коротких периодов — 8 недель, чтобы был виден контекст
+  const c0 = n >= 8 ? i0 : Math.max(0, i1 - 7), chart = S.weeks.slice(c0, i1 + 1), selFrom = i0 - c0;
+  const labels = chart.map(h => h.label);
+  const ser = path => chart.map(h => g(h, path) ?? null);
+  const perLabel = rangeLabel(A.first, A.lastDay);
+  const prevLabel = P ? rangeLabel(P.first, P.lastDay) : null;
+  const cmpWord = n === 1 ? 'неделей раньше' : `за предыдущие ${n} ${weeksWord(n)}`;
+  const lastW = sel[sel.length - 1];
+  const repWeek = sel.slice().reverse().find(w => w.report) || null;
+  const R = repWeek?.report || null;
+  const single = n === 1;
+  const platNote = S.plat === 'all' ? '' : ` · ${PL[S.plat]}`;
+  const prelim = new Set(single && R ? (R.preliminary || []) : []);
+  const flag = k => prelim.has(k) ? ' <span class="flag">предварительно</span>' : '';
+  document.getElementById('snap').textContent = S.preset === 'custom' ? `Данные недельные, период округлён до полных недель: ${perLabel}` : '';
+
+  const kpis = [
+    { t: 'Регистрации' + platNote, v: regOf(A), pv: regOf(P), s: chart.map(h => S.plat === 'all' ? g(h, 'kpi.reg') : (g(h, 'platform.' + S.plat) ?? 0)), from: 'База приложения' },
+    { t: single ? 'Активные за неделю' : 'Активные, в среднем за неделю', v: A.kpi.wau, pv: P?.kpi.wau, s: ser('kpi.wau'), from: 'База: любое действие' },
+    { t: 'Средний DAU', v: A.kpi.dau_avg, pv: P?.kpi.dau_avg, s: ser('kpi.dau_avg'), from: 'База: любое действие' },
+    { t: 'Первые загрузки iOS', v: A.stores.ios_first_downloads, pv: P?.stores.ios_first_downloads, s: ser('stores.ios_first_downloads'), from: 'App Store Connect' },
+    { t: 'Визиты на лендинг', v: A.landing.visits, pv: P?.landing.visits, s: ser('landing.visits'), from: 'Яндекс Метрика' },
+    { t: 'Вернулись за 7 дней', v: pct(A.kpi.ret_w1, A.kpi.reg), pv: P ? pct(P.kpi.ret_w1, P.kpi.reg) : null, s: chart.map(h => pct(g(h, 'kpi.ret_w1'), g(h, 'kpi.reg'))), suf: '%', from: 'База: когорты периода', k: 'ret_w1' },
+  ];
+  const kpiHtml = kpis.map(k => `<div class="kpi">
+      <div class="eyebrow">${esc(k.t)}${flag(k.k)}</div>
+      <div class="row"><span class="v num">${fmt(k.v)}${k.suf && k.v != null ? k.suf : ''}</span>${delta(k.v, k.pv)}</div>
+      <div class="prev">${cmpWord}: ${fmt(k.pv)}${k.suf && k.pv != null ? k.suf : ''}</div>
+      <div class="spark">${spark(k.s, labels, [selFrom], v => fmt(v) + (k.suf && v != null ? k.suf : ''))}</div>
+      <div class="from">Источник: ${esc(k.from)}</div></div>`).join('');
+
+  const keys = S.plat === 'all' ? ['ios', 'android', 'telegram', 'other'] : [S.plat];
+  const colors = { ios: 'var(--s-ios)', android: 'var(--s-android)', telegram: 'var(--s-tg)', other: 'var(--s-other)' };
+  const legend = keys.map(k => `<span><i style="background:${colors[k]}"></i>${PL[k]}</span>`).join('');
+
+  // путь пользователя за период
+  const L = single ? R?.growth?.landing : null;
+  const reg = regOf(A);
+  const fsteps = [
+    S.plat === 'all' && A.landing.visits != null ? { n: 'Визиты на лендинг', src: 'Метрика', v: A.landing.visits } : null,
+    L && S.plat === 'all' ? { n: 'Клики на кнопки сторов', src: 'Метрика · ' + L.clicksPeriod, v: (L.clicksAppStore || 0) + (L.clicksGooglePlay || 0) } : null,
+    (S.plat === 'all' || S.plat === 'ios') && A.stores.ios_first_downloads != null ? { n: 'Первые загрузки iOS', src: 'App Store Connect', v: A.stores.ios_first_downloads } : null,
+    { n: 'Регистрации' + platNote, src: 'База', v: reg },
+    S.plat === 'all' ? { n: 'Прошли онбординг', src: 'База · текущий статус', v: A.kpi.onboarded } : null,
+    S.plat === 'all' ? { n: 'Первое действие за 7 дней', src: 'событие, клуб, свайп', v: A.kpi.activated, k: 'activated' } : null,
+    S.plat === 'all' ? { n: 'Вернулись за 7 дней', src: 'База', v: A.kpi.ret_w1, k: 'ret_w1' } : null,
+  ].filter(Boolean);
+  const fmax = Math.max(1, ...fsteps.map(f => f.v || 0));
+  const funnel = fsteps.map((f, i) => {
+    const conv = i ? pct(f.v, fsteps[i - 1].v) : null;
+    return `${i ? `<div class="fconv">↓ ${conv == null ? '—' : fmt(conv) + '% от предыдущего шага'}</div>` : ''}
+    <div class="fstep"><div class="lbl">${esc(f.n)}${flag(f.k)}<small>${esc(f.src)}</small></div>
+    <div class="fbar"><b style="width:${Math.max(0.5, (f.v || 0) / fmax * 100)}%"></b></div><div class="fv num">${fmt(f.v)}</div></div>`;
+  }).join('');
+
+  const rows = sel.slice().reverse();
+  const totRow = (cells) => n > 1 ? `<tr class="tot"><td>Итого за период</td>${cells}</tr>` : '';
+  const cohort = rows.map(h => { const r = g(h, 'kpi.reg');
+    return `<tr><td>${esc(h.label)}</td><td>${fmt(r)}</td><td>${fmt(pct(g(h, 'kpi.onboarded'), r))}%</td><td>${fmt(pct(g(h, 'kpi.activated'), r))}%</td><td>${fmt(pct(g(h, 'kpi.ret_d1'), r))}%</td><td>${fmt(pct(g(h, 'kpi.ret_w1'), r))}%</td></tr>`; }).join('')
+    + totRow(`<td>${fmt(A.kpi.reg)}</td><td>${fmt(pct(A.kpi.onboarded, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.activated, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.ret_d1, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.ret_w1, A.kpi.reg))}%</td>`);
+  const regTable = rows.map(h => `<tr><td>${esc(h.label)}</td><td>${g(h, 'platform.ios') ?? 0}</td><td>${g(h, 'platform.android') ?? 0}</td><td>${g(h, 'platform.telegram') ?? 0}</td><td>${g(h, 'platform.other') ?? 0}</td><td>${g(h, 'kpi.reg')}</td></tr>`).join('')
+    + totRow(`<td>${A.platform.ios}</td><td>${A.platform.android}</td><td>${A.platform.telegram}</td><td>${A.platform.other}</td><td>${A.kpi.reg}</td>`);
+  const storeTable = rows.map(h => { const pv = g(h, 'stores.ios_page_views'), dl = g(h, 'stores.ios_first_downloads');
+    return `<tr><td>${esc(h.label)}</td><td>${fmt(g(h, 'stores.ios_impressions'))}</td><td>${fmt(pv)}</td><td>${fmt(dl)}</td><td>${fmt(pct(dl, pv))}%</td></tr>`; }).join('')
+    + totRow(`<td>${fmt(A.stores.ios_impressions)}</td><td>${fmt(A.stores.ios_page_views)}</td><td>${fmt(A.stores.ios_first_downloads)}</td><td>${fmt(pct(A.stores.ios_first_downloads, A.stores.ios_page_views))}%</td>`);
+
+  const prod = [
+    { t: 'События созданы', p: 'events_created', note: A.kpi.events_manual != null ? `вручную ${A.kpi.events_manual}, из серий ${A.kpi.events_created - A.kpi.events_manual}` : '' },
+    { t: 'Записи на события', p: 'event_joins', note: A.kpi.events_created ? `${fmt(A.kpi.event_joins / A.kpi.events_created)} на одно событие` : '' },
+    { t: 'Вступления в клубы', p: 'club_joins', note: `новых клубов: ${fmt(A.kpi.clubs_created)}` },
+    { t: 'Свайпы', p: 'swipes', note: 'поиск напарника' },
+    { t: 'Матчи', p: 'matches', note: A.kpi.swipes ? `${fmt(pct(A.kpi.matches, A.kpi.swipes))}% от свайпов` : '' },
+    { t: 'Сообщения в чатах', p: 'messages', note: single ? `писали: ${fmt(A.kpi.chat_users)} чел.` : `писали в среднем ${fmt(A.kpi.chat_users)} чел. в неделю` },
+  ].map(m => `<div class="mcell"><div class="eyebrow">${m.t}</div><div class="row" style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><span class="v num">${fmt(A.kpi[m.p])}</span>${delta(A.kpi[m.p], P?.kpi[m.p])}</div>
+     <div class="chart">${barsSimple(ser('kpi.' + m.p).map(v => v ?? 0), labels, selFrom)}</div><div class="note">${esc(m.note)}</div></div>`).join('');
+
+  const Q = R?.quality, G = R?.growth;
+  const notifRate = pct(A.kpi.notif_read, A.kpi.notif);
+  const pushRate = pct(A.kpi.push_ok, (A.kpi.push_ok || 0) + (A.kpi.push_err || 0));
+  const repNote = R && !single ? `<p class="muted" style="font-size:12.5px;margin-top:8px">Данные этого блока — из отчёта за ${esc(repWeek.label)}, последнюю неделю периода с сохранённым разбором.</p>` : '';
+
+  const autoSummary = [
+    { tone: !P ? 'flat' : regOf(A) >= regOf(P) ? 'up' : 'down', text: `Регистраций ${fmt(regOf(A))}${P ? ` против ${fmt(regOf(P))} ${cmpWord}` : ''}.` },
+    { tone: !P ? 'flat' : (A.kpi.wau ?? 0) >= (P.kpi.wau ?? 0) ? 'up' : 'down', text: `Активных в среднем ${fmt(A.kpi.wau)} в неделю${P ? ` против ${fmt(P.kpi.wau)}` : ''}, средний DAU ${fmt(A.kpi.dau_avg)}.` },
+    { tone: 'warn', text: `Вернулись в первые 7 дней ${fmt(pct(A.kpi.ret_w1, A.kpi.reg))}% новых, первое действие сделали ${fmt(pct(A.kpi.activated, A.kpi.reg))}%.` },
+    { tone: !P ? 'flat' : (A.kpi.del_req ?? 0) <= (P.kpi.del_req ?? 0) ? 'up' : 'down', text: `Запросов на удаление аккаунта ${fmt(A.kpi.del_req)}${P ? ` против ${fmt(P.kpi.del_req)}` : ''}.` },
+  ];
+  const summary = single && R ? R.summary : autoSummary;
+  const headline = single && R ? (R.headline || 'Итоги недели') : (single ? 'Итоги недели' : `Итоги за ${n} ${weeksWord(n)}`);
+
+  app.innerHTML = `
+  <section class="hero" aria-labelledby="h1">
+    <div>
+      <div class="eyebrow">${single ? 'Неделя' : 'Период'} ${esc(perLabel)} · ${n} ${weeksWord(n)} · пн–вс, МСК</div>
+      <h1 id="h1">${esc(headline)}</h1>
+      <p class="sub">${P ? 'Сравнение с периодом ' + esc(prevLabel) + ' такой же длины.' : 'Для сравнения не хватает данных до начала периода.'}${single && R ? ' Факты и гипотезы разделены в разборе ниже.' : ''}</p>
+      <ul class="summary">${summary.map(s => `<li><span class="tone ${s.tone}" aria-label="${s.tone === 'up' ? 'хорошо' : s.tone === 'down' ? 'плохо' : s.tone === 'flat' ? 'без сравнения' : 'внимание'}"></span><span>${esc(s.text)}</span></li>`).join('')}</ul>
+    </div>
+    <aside class="sources" aria-label="Источники данных">
+      <div class="eyebrow">Источники${R?.generatedAt ? ' · обновлено ' + new Date(R.generatedAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : ''}</div>
+      ${(R?.sources || []).map(s => `<div class="src"><span class="pill ${s.state}">${s.state === 'ok' ? 'есть' : s.state === 'partial' ? 'частично' : 'нет'}</span><span>${esc(s.name)}</span><span class="note">${esc(s.note)}</span></div>`).join('') || '<p class="muted">Статус источников не сохранён.</p>'}
+    </aside>
+  </section>
+
+  <section class="kpis" aria-label="Ключевые показатели">${kpiHtml}</section>
+
+  ${R ? `<section class="block" aria-labelledby="h-an">
+    <div class="bhead"><h2 id="h-an">Что произошло и почему${single ? '' : ' · неделя ' + esc(repWeek.label)}</h2><p>${single ? 'Аномалия: отклонение больше ±15% к прошлой неделе или больше 2σ от нормы за 8 недель' : 'Разбор сохранён по неделям; показан последний в выбранном периоде'}</p></div>
+    <div class="anoms">${R.anomalies.map(a => `<article class="anom"><h3>${esc(a.title)}</h3><div class="m">${esc(a.metric)}</div>
+      <div class="tag">Факты</div><ul>${a.facts.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+      <div class="tag">Гипотезы</div><ul>${a.hypotheses.map(f => `<li>${esc(f)}</li>`).join('')}</ul>
+      <div class="next"><span class="tag">Проверить</span><br>${esc(a.next)}</div></article>`).join('')}</div>
+    <div class="phead" style="margin:8px 0 0"><h3>Для продакта: стратегические наблюдения</h3></div>
+    <div class="strategy">${R.strategy.map(s => `<div><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></div>`).join('')}</div>
+  </section>` : ''}
+
+  <section class="block" aria-labelledby="h-gr">
+    <div class="bhead"><h2 id="h-gr">Рост</h2><p>Откуда приходят люди и сколько доходит до первого действия</p></div>
+    <div class="grid2">
+      <div class="panel"><div class="phead"><h3>Регистрации по платформам</h3><div class="legend">${legend}</div></div>
+        <div class="chart">${stackedBars(chart, keys, colors, selFrom)}</div>
+        ${selFrom > 0 ? '<p class="muted" style="font-size:12.5px;margin-top:6px">Бледные столбцы — недели до выбранного периода, для контекста.</p>' : ''}
+        <details class="tbl"><summary>Таблица</summary><div class="tscroll"><table><thead><tr><th>Неделя</th><th>iOS</th><th>Android</th><th>Telegram</th><th>Без платф.</th><th>Всего</th></tr></thead><tbody>${regTable}</tbody></table></div></details>
+      </div>
+      <div class="panel"><div class="phead"><h3>Путь пользователя за ${single ? 'неделю' : 'период'}</h3><span class="mono">разные источники</span></div><div class="funnel">${funnel}</div></div>
+    </div>
+    <div class="grid2e">
+      <div class="panel"><div class="phead"><h3>App Store: показы → страница → загрузка</h3><span class="mono">App Store Connect</span></div>
+        <div class="tscroll" style="margin:0"><table><thead><tr><th>Неделя</th><th>Показы</th><th>Страница</th><th>Загрузки</th><th>Конв.</th></tr></thead><tbody>${storeTable}</tbody></table></div></div>
+      <div class="panel" style="display:flex;flex-direction:column;gap:16px">
+        ${G?.play28d ? `<div><div class="phead"><h3>Google Play за 28 дней</h3><span class="mono">${esc(G.play28d.period)}</span></div>
+          <div class="stats"><div class="stat"><span class="eyebrow">Установки</span><span class="v num">${fmt(G.play28d.installs)}</span>${delta(G.play28d.installs, G.play28d.installs / (1 + G.play28d.installsDelta / 100))}</div>
+          <div class="stat"><span class="eyebrow">Первые запуски</span><span class="v num">${fmt(G.play28d.firstOpens)}</span>${delta(G.play28d.firstOpens, G.play28d.firstOpens / (1 + G.play28d.firstOpensDelta / 100))}</div>
+          <div class="stat"><span class="eyebrow">Активные устройства</span><span class="v num">${fmt(G.play28d.activeDevicesMonth)}</span>${delta(G.play28d.activeDevicesMonth, G.play28d.activeDevicesMonth / (1 + G.play28d.activeDevicesDelta / 100))}</div></div>
+          <p class="muted" style="font-size:12.5px;margin-top:8px">Google Play отдаёт только скользящие 28 дней, поэтому этот блок не зависит от выбранного периода.</p></div>` : ''}
+        ${L ? `<div><div class="phead"><h3>Лендинг app.runconnect.ru</h3><span class="mono">Метрика</span></div>
+          <div class="stats"><div class="stat"><span class="eyebrow">Из рекламы</span><span class="v num">${fmt(L.adShare)}%</span></div><div class="stat"><span class="eyebrow">Отказы</span><span class="v num">${fmt(L.bounce)}%</span></div><div class="stat"><span class="eyebrow">Клики на сторы</span><span class="v num">${fmt(L.clicksAppStore + L.clicksGooglePlay)}</span><span class="muted" style="font-size:12px">App Store ${L.clicksAppStore} · Google Play ${L.clicksGooglePlay}</span></div></div>
+          ${L.dailyVisits && G.dailyReg ? `<div class="grid2e" style="margin-top:12px;gap:12px"><div><div class="eyebrow">Визиты по дням</div><div class="chart">${barsSimple(L.dailyVisits, ['пн','вт','ср','чт','пт','сб','вс'].map(d => d + ' · визиты'), 0, 'var(--s-ios)')}</div></div><div><div class="eyebrow">Регистрации по дням</div><div class="chart">${barsSimple(G.dailyReg, ['пн','вт','ср','чт','пт','сб','вс'].map(d => d + ' · регистрации'), 0, 'var(--accent)')}</div></div></div>` : ''}</div>`
+        : `<div><div class="phead"><h3>Лендинг app.runconnect.ru</h3><span class="mono">Метрика</span></div><div class="stats"><div class="stat"><span class="eyebrow">Визиты за период</span><span class="v num">${fmt(A.landing.visits)}</span>${delta(A.landing.visits, P?.landing.visits)}</div></div><p class="muted" style="font-size:12.5px;margin-top:8px">Отказы, доля рекламы и клики на сторы сохраняются по неделям: выберите одну неделю, чтобы их увидеть.</p></div>`}
+      </div>
+    </div>
+    <div class="grid2e">
+      <div class="panel"><div class="phead"><h3>Когорты новых пользователей</h3><span class="mono">доля от регистраций недели</span></div>
+        <div class="tscroll" style="margin:0"><table><thead><tr><th>Когорта</th><th>Рег.</th><th>Онбординг</th><th>Действие 7д</th><th>D1</th><th>Возврат 7д</th></tr></thead><tbody>${cohort}</tbody></table></div>
+        <p class="muted" style="font-size:12.5px;margin-top:8px">Последняя когорта предварительная, пока не прошло 7 дней с последней регистрации.</p></div>
+      ${G?.cities ? `<div class="panel"><div class="phead"><h3>Города новых пользователей · ${esc(repWeek.label)}</h3><span class="mono">база</span></div>
+        <div class="tscroll" style="margin:0"><table><thead><tr><th>Город</th><th>Неделя</th><th>Прошлая</th><th>Всего</th></tr></thead><tbody>${G.cities.map(c => `<tr><td>${esc(c.city)}</td><td>${c.week}</td><td>${c.prev}</td><td>${c.total}</td></tr>`).join('')}</tbody></table></div>
+        <p class="muted" style="font-size:12.5px;margin-top:8px">Почти вся аудитория в России, поэтому смотрим города, а не страны.</p></div>` : ''}
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="h-pr">
+    <div class="bhead"><h2 id="h-pr">Продукт</h2><p>Ключевые действия за ${single ? 'неделю' : 'период'}, все платформы вместе</p></div>
+    <div class="multi">${prod}</div>
+  </section>
+
+  <section class="block" aria-labelledby="h-q">
+    <div class="bhead"><h2 id="h-q">Качество</h2><p>Стабильность приложения и бэкенда, доставка уведомлений, отток</p></div>
+    <div class="grid2e">
+      ${Q ? `<div class="panel"><div class="phead"><h3>Краши Android</h3><span class="mono">Crashlytics · ${esc(Q.crashPeriod)}</span></div>
+        <div class="stats"><div class="stat"><span class="eyebrow">Без крашей, польз.</span><span class="v num">${fmt(Q.androidCrashFreeUsers)}%</span></div><div class="stat"><span class="eyebrow">Без крашей, сессии</span><span class="v num">${fmt(Q.androidCrashFreeSessions)}%</span></div><div class="stat"><span class="eyebrow">Крашей</span><span class="v num">${Q.androidCrashes}</span><span class="muted" style="font-size:12px">у ${Q.androidCrashUsers} пользователей</span></div></div>
+        <div style="margin-top:14px">${Q.topCrashes.map(c => `<div class="crash"><div style="display:flex;justify-content:space-between;gap:10px"><span>${esc(c.title)}</span><span class="num muted" style="white-space:nowrap">${c.crashes} · ${c.users} польз.</span></div><span class="w">${esc(c.where)}</span></div>`).join('')}</div>
+        <p style="margin-top:10px;font-size:13.5px"><span class="lv critical">iOS</span> ${Q.iosUnprocessed} крашей не обработаны: нет dSYM-файлов.</p>${repNote}</div>` : ''}
+      <div class="panel" style="display:flex;flex-direction:column;gap:18px">
+        ${Q ? `<div><div class="phead"><h3>Бэкенд${single ? '' : ' · ' + esc(repWeek.label)}</h3><span class="mono">логи Loki</span></div><div class="stats"><div class="stat"><span class="eyebrow">Ошибки</span><span class="v num">${Q.backendErrors}</span></div><div class="stat"><span class="eyebrow">Предупреждения</span><span class="v num">${Q.backendWarnings}</span></div><div class="stat"><span class="eyebrow">Рестарты</span><span class="v num">${Q.backendRestarts}</span><span class="muted" style="font-size:12px">неделей раньше: ${Q.backendRestartsPrev}</span></div></div></div>` : ''}
+        <div><div class="phead"><h3>Уведомления за ${single ? 'неделю' : 'период'}</h3><span class="mono">база</span></div><div class="stats"><div class="stat"><span class="eyebrow">Push доставлены</span><span class="v num">${fmt(pushRate)}%</span><span class="muted" style="font-size:12px">${fmt(A.kpi.push_ok)} отправлено</span></div><div class="stat"><span class="eyebrow">Прочитано</span><span class="v num">${fmt(notifRate)}%</span>${delta(notifRate, P ? pct(P.kpi.notif_read, P.kpi.notif) : null)}</div></div></div>
+        <div><div class="phead"><h3>Запросы на удаление аккаунта: ${fmt(A.kpi.del_req)}</h3>${delta(A.kpi.del_req, P?.kpi.del_req, true)}</div><div class="chart">${barsSimple(ser('kpi.del_req').map(v => v ?? 0), labels, selFrom, 'var(--st-crit)')}</div></div>
+      </div>
+    </div>
+  </section>
+
+  ${R?.dataQuality ? `<section class="block" aria-labelledby="h-dq">
+    <div class="bhead"><h2 id="h-dq">Качество данных и расхождения</h2><p>Что стоит учитывать при чтении цифр</p></div>
+    <div class="panel"><ul class="dq">${(single ? [] : [{ level: 'info', text: 'За период суммируются недельные значения. Активные пользователи и авторы сообщений показаны в среднем за неделю: один и тот же человек мог быть активен в нескольких неделях.' }]).concat(R.dataQuality).map(d => `<li><span class="lv ${d.level}">${d.level === 'critical' ? 'важно' : d.level === 'warn' ? 'внимание' : 'инфо'}</span><span>${esc(d.text)}</span></li>`).join('')}</ul></div>
+  </section>` : ''}
+
+  <footer>Всего пользователей на конец периода: ${fmt(A.kpi.total_users)}. Неделя: понедельник–воскресенье по Москве. App Store считает сутки по UTC. Активность считается по любому действию в приложении: сессия, сообщение, запись на событие, вступление в клуб, свайп или создание события.</footer>`;
+}
+
+/* ---------- управление ---------- */
+function setSeg(id, v) { document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v)))); }
+function syncDates() {
+  const f = document.getElementById('dFrom'), t = document.getElementById('dTo');
+  if (!S.weeks.length) return;
+  const min = S.weeks[0].week, max = addDays(S.weeks[S.weeks.length - 1].week, 6);
+  f.min = t.min = min; f.max = t.max = max;
+  if (!S.from || !S.to) { const pi = periodIdx() || [0, S.weeks.length - 1]; S.from = S.weeks[pi[0]].week; S.to = addDays(S.weeks[pi[1]].week, 6); }
+  f.value = S.from; t.value = S.to;
+}
+document.getElementById('period').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v === 'custom') { const pi = periodIdx(); if (pi) { S.from = S.weeks[pi[0]].week; S.to = addDays(S.weeks[pi[1]].week, 6); } }
+  S.preset = b.dataset.v; setSeg('period', S.preset);
+  document.getElementById('customBox').hidden = S.preset !== 'custom'; syncDates(); render(); });
+document.getElementById('dFrom').addEventListener('change', e => { S.from = e.target.value; render(); });
+document.getElementById('dTo').addEventListener('change', e => { S.to = e.target.value; render(); });
+document.getElementById('plat').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.plat = b.dataset.v; setSeg('plat', S.plat); render(); });
+setSeg('period', S.preset); setSeg('plat', S.plat);
+function fillWeeks() { syncDates(); }
+
+/* ---------- подсказки ---------- */
+const tip = document.getElementById('tip');
+document.addEventListener('pointermove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if (!t) { tip.hidden = true; return; }
+  tip.innerHTML = t.getAttribute('data-tip'); tip.hidden = false;
+  const r = tip.getBoundingClientRect(); let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 14; if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 14;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+});
+document.addEventListener('pointerleave', () => { tip.hidden = true; });
+
+/* ---------- data ---------- */
+fetch('weeks.json', { cache: 'no-store' })
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(d => { S.weeks = (d.weeks || d).slice().sort((a, b) => a.week < b.week ? -1 : 1); fillWeeks(); render(); })
+  .catch(err => { document.getElementById('app').innerHTML = `<div class="empty"><h2>Не удалось загрузить данные</h2><p class="muted">${esc(err.message)}. Обновите страницу через минуту.</p></div>`; });
+})();
+</script>
+
+</body>
+</html>
