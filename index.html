@@ -197,6 +197,32 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
 .chart text.ax{fill:var(--muted);font-size:10px}
 .nodata{color:var(--muted);font-size:13px;padding:28px 0;text-align:center;border:1px dashed var(--line-2);border-radius:8px}
 .chartnote{color:var(--muted);font-size:13px;margin-top:-24px}
+
+/* Разделы, большие блоки и линейные графики */
+:root{--l-1:#4a3aa7;--l-2:#e87ba4;--l-3:#008300;--l-4:#eda100;--l-5:#1baf7a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--l-1:#9085e9;--l-2:#d55181;--l-3:#008300;--l-4:#c98500;--l-5:#199e70}}
+:root[data-theme="dark"]{--l-1:#9085e9;--l-2:#d55181;--l-3:#008300;--l-4:#c98500;--l-5:#199e70}
+.tabs button{font-weight:500}
+.seg[hidden]{display:none}
+.hero.one{grid-template-columns:1fr}
+.panel.big{padding:22px 24px;display:flex;flex-direction:column;gap:14px;border-radius:18px}
+@media (max-width:600px){.panel.big{padding:16px}}
+.bigh h2{font-size:21px}
+.bigh p{font-size:13px;margin-top:4px}
+.lgd{display:flex;flex-wrap:wrap;gap:8px 22px}
+.lgd .li{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:4px 2px;cursor:pointer;font-size:14px;color:var(--ink);text-align:left}
+.lgd .li i{width:16px;height:16px;border-radius:4px;background:var(--c);flex:none;position:relative}
+.lgd .li i::after{content:"";position:absolute;left:5px;top:2px;width:4px;height:8px;border:solid var(--surface);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.lgd .li[aria-pressed="false"] i{background:transparent;box-shadow:inset 0 0 0 2px var(--c)}
+.lgd .li[aria-pressed="false"] i::after{display:none}
+.lgd .li[aria-pressed="false"] .ln,.lgd .li[aria-pressed="false"] b{color:var(--muted)}
+.lgd .li b{font-weight:600;font-size:15px}
+.lgd .li .delta{font-size:11px}
+.chart .xh{stroke:var(--line-2);stroke-width:1;opacity:0}
+.chart .hx:hover .xh{opacity:1}
+.tk{display:inline-block;width:12px;height:2px;vertical-align:middle;margin-right:6px}
+.lead{font-size:15px;color:var(--ink-2);max-width:62ch}
+.lead b{color:var(--ink)}
 </style>
 
 </head>
@@ -207,6 +233,10 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
       <div class="mark" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1 12 L5 6 L8 9 L11 3 L15 8" fill="none" stroke="var(--surface)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div><b>Пульс RunConnect</b> <span>недельный отчёт</span></div>
     </div>
+    <nav class="seg tabs" id="tab" aria-label="Раздел">
+      <button type="button" data-v="app" aria-pressed="true">Приложение</button>
+      <button type="button" data-v="landing" aria-pressed="false">Лендинг</button>
+    </nav>
     <div class="controls">
       <div class="seg" id="period" role="group" aria-label="Период">
         <button type="button" data-v="1" aria-pressed="true">Неделя</button>
@@ -242,7 +272,7 @@ footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padd
 
 <script>
 (() => {
-const S = { weeks: [], preset: '1', from: '', to: '', plat: 'all' };
+const S = { weeks: [], landing: null, preset: '1', from: '', to: '', plat: 'all', tab: (location.hash === '#landing' ? 'landing' : 'app') };
 
 const MONTHS = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
 const MONTHS_G = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
@@ -296,7 +326,9 @@ function agg(list, strict) {
   SNAPS.forEach(k => kpi[k] = last('kpi.' + k));
   const platform = {}; ['ios', 'android', 'telegram', 'other'].forEach(k => platform[k] = sum('platform.' + k) ?? 0);
   const stores = {}; STORES.forEach(k => stores[k] = sum('stores.' + k));
-  return { n: list.length, kpi, platform, stores, landing: { visits: sum('landing.visits') }, play: { installs: sum('play.installs') },
+  const fb = {}; ['first_open', 'first_open_ios', 'first_open_android', 'opens'].forEach(k => fb[k] = sum('fb.' + k)); ['active_users', 'opens_users'].forEach(k => fb[k] = avg('fb.' + k));
+  if (strict && vals('fb.opens').length < list.length) { fb.active_users = null; fb.opens_users = null; }
+  return { n: list.length, kpi, platform, stores, fb, landing: { visits: sum('landing.visits') }, play: { installs: sum('play.installs') },
     first: list[0].week, lastDay: addDays(list[list.length - 1].week, 6) };
 }
 function regOf(a) { return a == null ? null : (S.plat === 'all' ? a.kpi.reg : (a.platform[S.plat] ?? 0)); }
@@ -360,16 +392,78 @@ function colChart(s, W) {
   });
   return o + '</svg>';
 }
-function drawCharts() {
-  // на узком экране длинный ряд не сжимаем: минимум 26px на неделю, график прокручивается вбок, начиная с последних недель
-  document.querySelectorAll('[data-c]').forEach(el => { const s = CH[el.dataset.c]; if (!s) return;
-    const cw = Math.max(240, Math.floor(el.clientWidth)), W = Math.max(cw, s.weeks.length * 26);
-    el.classList.toggle('scroll', W > cw); el.innerHTML = colChart(s, W); if (W > cw) el.scrollLeft = W; });
+/* ---------- линейные графики ----------
+   Линии 2px, точки с кольцом цвета фона. Значения подписаны прямо на графике:
+   при ≤16 точках — у каждой точки (подпись пропускается, если налезает на соседнюю),
+   при большем числе — последняя точка и максимум каждой линии. Наведение показывает все линии сразу. */
+function lineChart(s, W) {
+  const H = s.h || 260, T = 22, B = 30, L = 44, R = 18, n = s.pts.length;
+  const fv = s.fmt || fmt;
+  const vis = s.series.map((x, j) => ({ x, j })).filter(o => !o.x.off);
+  const all = s.series.map(x => s.pts.map(p => { const v = x.get(p); return v == null || Number.isNaN(v) ? null : v; }));
+  const shown = vis.flatMap(o => all[o.j]).filter(v => v != null);
+  if (!shown.length) return `<div class="nodata">${esc(s.empty || (vis.length ? 'Нет данных за эти даты' : 'Все линии выключены — включите хотя бы одну в легенде'))}</div>`;
+  const dmax = Math.max(1, ...shown);
+  // шаг сетки 1/2/5 × 10ⁿ, 3–5 делений — чтобы подписи оси были круглыми
+  const p10 = Math.pow(10, Math.floor(Math.log10(dmax / 4))); const ystep = [1, 2, 5, 10].map(m => m * p10).find(st => dmax / st <= 5) || 10 * p10;
+  const ticks = Math.max(1, Math.ceil(dmax / ystep)), max = ticks * ystep;
+  const step = n > 1 ? (W - L - R) / (n - 1) : 0;
+  const x = i => n === 1 ? (L + W - R) / 2 : L + i * step;
+  const y = v => H - B - v / max * (H - B - T);
+  let o = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(s.aria || '')}">`;
+  if (s.selFrom > 0 && n > 1) { const xs = x(s.selFrom) - step / 2; o += `<rect x="${L}" y="${T - 8}" width="${Math.max(0, xs - L)}" height="${H - B - T + 8}" fill="var(--line)" fill-opacity=".45"></rect>`; }
+  for (let t = 0; t <= ticks; t++) { const v = ystep * t, yy = y(v); o += `<line class="${t ? 'grid' : 'base'}" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"></line><text class="ax" x="${L - 6}" y="${yy + 3.5}" text-anchor="end">${fv(v)}</text>`; }
+  // подписи дат
+  const xw = Math.max(...s.pts.map(p => String(p.xl).length)) * 6.6 + 10, kx = Math.max(1, Math.ceil(xw / Math.max(step, 1)));
+  { let leftEdge = Infinity; for (let i = n - 1; i >= 0; i -= kx) { const cx = Math.min(Math.max(x(i), L + xw / 2 - 6), W - R - xw / 2 + 6);
+      if (cx + xw / 2 > leftEdge) continue; leftEdge = cx - xw / 2; o += `<text class="xl" x="${cx}" y="${H - B + 17}" text-anchor="middle">${esc(s.pts[i].xl)}</text>`; } }
+  // линии
+  vis.forEach(({ x: se, j }) => {
+    let d = '', pen = false;
+    all[j].forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' '; pen = true; });
+    o += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>`;
+    if (n <= 60) all[j].forEach((v, i) => { if (v != null) o += `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${se.color}" stroke="var(--surface)" stroke-width="2"></circle>`; });
+  });
+  // подписи значений с защитой от наложений
+  const placed = [];
+  const fits = (cx, cy, w) => !placed.some(b => Math.abs(b.cx - cx) < (b.w + w) / 2 + 2 && Math.abs(b.cy - cy) < 12);
+  const done = new Set();
+  const label = (i, v, j, important) => { const key = j + ':' + i; if (done.has(key)) return; done.add(key);
+    const txt = fv(v), w = txt.length * 6.4 + 4; let cx = Math.min(Math.max(x(i), L + w / 2), W - R - w / 2), cy = y(v) - 8;
+    if (!fits(cx, cy, w)) { if (!important) return; cy = y(v) + 16; if (!fits(cx, cy, w) || cy > H - B - 2) return; }
+    placed.push({ cx, cy, w }); o += `<text class="val" x="${cx}" y="${cy}" text-anchor="middle">${txt}</text>`; };
+  const order = vis.map(v => v.j);
+  // сначала последние точки и максимумы — они важнее
+  order.forEach(j => { let li = -1, mi = -1; all[j].forEach((v, i) => { if (v != null) { li = i; if (mi < 0 || v > all[j][mi]) mi = i; } }); if (li >= 0) label(li, all[j][li], j, true); if (mi >= 0) label(mi, all[j][mi], j, true); });
+  if (n <= 16) order.forEach(j => all[j].forEach((v, i) => { if (v != null) label(i, v, j); }));
+  // наведение: вертикальная линия и все значения в точке
+  s.pts.forEach((p, i) => { const x0 = n === 1 ? L : x(i) - step / 2, w = n === 1 ? W - L - R : step;
+    const tip = `<b>${esc(p.label)}</b>` + vis.map(({ x: se, j }) => `<br><span class="tk" style="background:${se.color}"></span>${fv(all[j][i])} · ${esc(se.name)}`).join('');
+    o += `<g class="hx"><line class="xh" x1="${x(i)}" x2="${x(i)}" y1="${T - 8}" y2="${H - B}"></line><rect x="${Math.max(L, x0)}" y="0" width="${Math.max(1, w)}" height="${H}" fill="transparent" data-tip="${esc(tip)}"></rect></g>`; });
+  return o + '</svg>';
 }
+/* Легенда-переключатель: квадрат цвета линии, название, итог за период и изменение. Клик скрывает/показывает линию. */
+function legendHtml(id, items) {
+  return `<div class="lgd" data-for="${id}">${items.map((it, j) => `<button type="button" class="li" data-s="${j}" aria-pressed="true"><i style="--c:${it.color}"></i><span class="ln">${esc(it.name)}</span><b class="num">${it.v == null ? '—' : (it.fmt || fmt)(it.v)}</b>${it.delta || ''}</button>`).join('')}</div>`;
+}
+document.addEventListener('click', e => { const b = e.target.closest('.lgd .li'); if (!b) return;
+  const id = b.parentElement.dataset.for, s = CH[id]; if (!s) return; const j = +b.dataset.s;
+  s.series[j].off = !s.series[j].off; b.setAttribute('aria-pressed', String(!s.series[j].off));
+  const el = document.querySelector(`[data-c="${id}"]`); if (el) drawOne(el); });
+
+// на узком экране длинный ряд не сжимаем: минимум 26px на неделю (8px на день у линий), график листается вбок, начиная с последних дат
+function drawOne(el) { const s = CH[el.dataset.c]; if (!s) return;
+  const cw = Math.max(240, Math.floor(el.clientWidth)), n = s.type === 'line' ? s.pts.length : s.weeks.length;
+  const W = Math.max(cw, n * (s.type === 'line' ? (n > 60 ? 3 : 30) : 26));
+  el.classList.toggle('scroll', W > cw); el.innerHTML = s.type === 'line' ? lineChart(s, W) : colChart(s, W); if (W > cw) el.scrollLeft = W; }
+function drawCharts() { document.querySelectorAll('[data-c]').forEach(drawOne); }
+function slotId(spec) { const id = 'c' + (++chSeq); CH[id] = spec; return id; }
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(drawCharts, 120); });
 
 /* ---------- отрисовка ---------- */
 function render() {
+  document.getElementById('plat').hidden = S.tab === 'landing';
+  if (S.tab === 'landing') return renderLanding();
   const app = document.getElementById('app');
   CH = {}; chSeq = 0;
   if (!S.weeks.length) { app.innerHTML = `<div class="empty"><h2>Данных пока нет</h2><p class="muted">Первая неделя появится после ближайшего сбора отчёта.</p></div>`; return; }
@@ -412,20 +506,99 @@ function render() {
   const K = (t, key, mode, src, o = {}) => card(Object.assign({ t, p: 'kpi.' + key, mode, src }, o));
   const grid = cards => `<div class="cgrid${chart.length > 16 ? ' one' : ''}">${cards.join('')}</div>`;
 
-  /* --- KPI сверху --- */
-  const kpis = [
-    { t: 'Регистрации' + platNote, v: regOf(A), pv: regOf(P), from: 'База приложения' },
-    { t: single ? 'Активные за неделю' : 'Активные, в среднем за неделю', v: A.kpi.wau, pv: P?.kpi.wau, from: 'База: любое действие' },
-    { t: 'Открытия приложения', v: A.kpi.sessions, pv: P?.kpi.sessions, from: 'База: сессии' },
-    { t: 'Установки iOS + Android', v: (A.stores.ios_first_downloads == null && A.play.installs == null) ? null : (A.stores.ios_first_downloads || 0) + (A.play.installs || 0), pv: P ? ((P.stores.ios_first_downloads == null && P.play.installs == null) ? null : (P.stores.ios_first_downloads || 0) + (P.play.installs || 0)) : null, from: 'App Store Connect + Google Play', note: A.stores.ios_first_downloads == null ? 'нет данных App Store' : '' },
-    { t: 'Визиты на лендинг', v: A.landing.visits, pv: P?.landing.visits, from: 'Яндекс Метрика' },
-    { t: 'Вернулись за 7 дней', v: pct(A.kpi.ret_w1, A.kpi.reg), pv: P ? pct(P.kpi.ret_w1, P.kpi.reg) : null, suf: '%', from: 'База: когорты периода', k: 'ret_w1' },
-  ];
-  const kpiHtml = kpis.map(k => `<div class="kpi">
-      <div class="eyebrow">${esc(k.t)}${flag(k.k)}</div>
-      <div class="row"><span class="v num">${fmt(k.v)}${k.suf && k.v != null ? k.suf : ''}</span>${delta(k.v, k.pv)}</div>
-      <div class="prev">${cmpWord}: ${fmt(k.pv)}${k.suf && k.pv != null ? k.suf : ''}</div>
-      <div class="from">Источник: ${esc(k.from)}${k.note ? ' · ' + esc(k.note) : ''}</div></div>`).join('');
+  /* --- Главный блок: воронка установка → первое открытие → регистрация --- */
+  const C3 = { inst: 'var(--l-1)', open: 'var(--l-2)', reg: 'var(--l-3)' };
+  const instOf = a => { if (!a) return null; const i = a.stores.ios_first_downloads, p = a.play.installs;
+    if (S.plat === 'ios') return i; if (S.plat === 'android') return p; if (S.plat === 'telegram') return null; return i == null && p == null ? null : (i || 0) + (p || 0); };
+  const instW = w => { const i = g(w, 'stores.ios_first_downloads'), p = g(w, 'play.installs');
+    if (S.plat === 'ios') return i ?? null; if (S.plat === 'android') return p ?? null; if (S.plat === 'telegram') return null; return i == null && p == null ? null : (i || 0) + (p || 0); };
+  const FOK = { all: 'first_open', ios: 'first_open_ios', android: 'first_open_android' };
+  const foOf = a => a && FOK[S.plat] ? a.fb[FOK[S.plat]] : null;
+  const foW = w => FOK[S.plat] ? (g(w, 'fb.' + FOK[S.plat]) ?? null) : null;
+  const regW = w => S.plat === 'all' ? g(w, 'kpi.reg') : (g(w, 'platform.' + S.plat) ?? 0);
+  const wpts = chart.map(w => ({ key: w.week, label: w.label, xl: chart.length <= 14 ? dshort(w.week) : dnum(w.week), w }));
+  const mainId = slotId({ type: 'line', pts: wpts, selFrom, h: 300, aria: 'Установки, первые открытия приложения и регистрации по неделям',
+    series: [{ name: 'Установки', color: C3.inst, get: p => instW(p.w) }, { name: 'Первые открытия', color: C3.open, get: p => foW(p.w) }, { name: 'Регистрации', color: C3.reg, get: p => regW(p.w) }] });
+  const instA = instOf(A), foA = foOf(A), regA = regOf(A);
+  const convTxt = (a, b) => { const c = pct(a, b); return c == null ? '—' : c > 100 ? 'больше 100%' : fmt(c) + '%'; };
+  const mainBlock = `<section class="panel big" aria-labelledby="h-main">
+    <div class="bigh"><div><h2 id="h-main">Установка → первое открытие → регистрация${esc(platNote)}</h2><p class="muted">По неделям, ${esc(chartRange)}. Цифры в легенде — ${single ? 'за неделю' : 'за выбранный период'} и изменение ${esc(cmpWord)}. Нажмите на показатель, чтобы скрыть или вернуть линию.</p></div></div>
+    ${foA != null ? `<p class="lead">Из <b class="num">${fmt(foA)}</b> человек, впервые открывших приложение ${single ? 'за неделю' : 'за период'}, зарегистрировались <b class="num">${fmt(regA)}</b> — <b>${convTxt(regA, foA)}</b>.${instA ? (foA > instA ? ` Первых открытий даже больше, чем установок из сторов (${fmt(instA)}) — почему, см. под графиком.` : ` До первого открытия дошли ${convTxt(foA, instA)} установивших.`) : ''}</p>` : ''}
+    ${legendHtml(mainId, [
+      { name: 'Установки', color: C3.inst, v: instA, delta: delta(instA, instOf(P)) },
+      { name: 'Первые открытия', color: C3.open, v: foA, delta: delta(foA, foOf(P)) },
+      { name: 'Регистрации', color: C3.reg, v: regA, delta: delta(regA, regOf(P)) }])}
+    <div class="chart" data-c="${mainId}"></div>
+    <p class="cpn">Установки — первые загрузки iOS (App Store Connect) плюс новые установки Android (Google Play). Первые открытия — событие first_open в Firebase: человек установил приложение и запустил его в первый раз на этом устройстве; данные с 1 июня. На Android первых открытий больше, чем установок в Google Play: first_open срабатывает и после переустановки или очистки данных, а Google Play такие установки новыми не считает. Регистрации — новые аккаунты в базе.</p>
+  </section>`;
+
+  /* --- Установки по устройствам --- */
+  const devId = slotId({ type: 'line', pts: wpts, selFrom, h: 260, aria: 'Установки iOS и Android по неделям',
+    series: [{ name: 'iOS', color: 'var(--s-ios)', get: p => g(p.w, 'stores.ios_first_downloads') }, { name: 'Android', color: 'var(--s-android)', get: p => g(p.w, 'play.installs') }] });
+  const iosA = A.stores.ios_first_downloads, andA = A.play.installs, devTot = (iosA || 0) + (andA || 0);
+  const devBlock = `<section class="panel big" aria-labelledby="h-dev">
+    <div class="bigh"><div><h2 id="h-dev">Установки по устройствам</h2><p class="muted">${devTot ? `iOS — ${fmt(pct(iosA, devTot))}%, Android — ${fmt(pct(andA, devTot))}% установок ${single ? 'за неделю' : 'за период'}.` : 'Нет данных об установках за этот период.'}${A.fb.first_open ? ` Первые открытия: iOS ${fmt(A.fb.first_open_ios)}, Android ${fmt(A.fb.first_open_android)}.` : ''}</p></div></div>
+    ${legendHtml(devId, [
+      { name: 'iOS', color: 'var(--s-ios)', v: iosA, delta: delta(iosA, P?.stores.ios_first_downloads) },
+      { name: 'Android', color: 'var(--s-android)', v: andA, delta: delta(andA, P?.play.installs) }])}
+    <div class="chart" data-c="${devId}"></div>
+    <p class="cpn">iOS — первые загрузки из App Store Connect (сутки по UTC). Android — новые пользователи из Google Play (сутки по тихоокеанскому времени).</p>
+  </section>`;
+
+  /* --- Все открытия приложения: отдельный график --- */
+  const O3 = { all: 'var(--l-2)', ret: 'var(--l-1)', nw: 'var(--l-4)' };
+  const retU = w => { const u = g(w, 'fb.opens_users'), f = g(w, 'fb.first_open'); return u == null ? null : Math.max(0, u - (f || 0)); };
+  const opId = slotId({ type: 'line', pts: wpts, selFrom, h: 260, aria: 'Открытия приложения по неделям',
+    series: [{ name: 'Открытий всего', color: O3.all, get: p => g(p.w, 'fb.opens') }, { name: 'Открывали: вернувшиеся', color: O3.ret, get: p => retU(p.w) }, { name: 'Открывали: новые', color: O3.nw, get: p => g(p.w, 'fb.first_open') }] });
+  const rnd = v => v == null ? null : Math.round(v);
+  const opA = A.fb.opens, ouA = rnd(A.fb.opens_users), foAll = A.fb.first_open, foWk = rnd(foAll == null ? null : foAll / n);
+  const retA = ouA == null ? null : Math.max(0, ouA - (foWk || 0));
+  const perUser = opA && ouA ? opA / n / ouA : null;
+  const opensBlock = `<section class="panel big" aria-labelledby="h-op">
+    <div class="bigh"><div><h2 id="h-op">Открытия приложения</h2><p class="muted">Все запуски, не только первые. Firebase, все платформы${S.plat !== 'all' ? ' (фильтр по платформе здесь не применяется)' : ''}.</p></div></div>
+    ${opA != null ? `<p class="lead">${single ? 'За неделю' : 'В среднем за неделю'} приложение открывали <b class="num">${fmt(ouA)}</b> человек, в среднем по <b>${fmt(perUser)}</b> открытия на человека. Из них вернувшихся (не первый запуск) — <b class="num">${fmt(retA)}</b>, это <b>${fmt(pct(retA, ouA))}%</b>.</p>` : '<p class="lead">За этот период данных Firebase нет: они начинаются с 1 июня.</p>'}
+    ${legendHtml(opId, [
+      { name: 'Открытий всего', color: O3.all, v: opA, delta: delta(opA, P?.fb.opens) },
+      { name: 'Открывали: вернувшиеся', color: O3.ret, v: retA },
+      { name: 'Открывали: новые', color: O3.nw, v: foWk, delta: delta(foAll, P?.fb.first_open) }])}
+    <div class="chart" data-c="${opId}"></div>
+    <p class="cpn">Открытие — событие session_start в Firebase: запуск приложения после перерыва больше 30 минут. «Открывали» — уникальные люди за неделю. Новые — те, у кого в эту неделю был первый запуск, вернувшиеся — остальные. Числа в легенде для людей ${single ? 'за неделю' : 'в среднем за неделю'}, для открытий — ${single ? 'за неделю' : 'за период'}.</p>
+  </section>`;
+
+  /* --- Вовлечённость: активные и удержание новичков, с объяснением прямо в карточке --- */
+  const E2 = { a: 'var(--l-1)', b: 'var(--l-4)', c: 'var(--l-5)' };
+  const base = A.kpi.total_users;
+  const actId = slotId({ type: 'line', pts: wpts, selFrom, h: 230, aria: 'Активные пользователи по неделям',
+    series: [{ name: 'Открывали приложение', color: E2.a, get: p => g(p.w, 'fb.opens_users') }, { name: 'Что-то делали', color: E2.b, get: p => g(p.w, 'kpi.wau') }] });
+  const ouP = P?.fb.opens_users == null ? null : Math.round(P.fb.opens_users);
+  const coh = p => { const r = g(p.w, 'kpi.reg'); return r >= 5 ? r : null; };
+  const retId = slotId({ type: 'line', pts: wpts, selFrom, h: 230, fmt: v => v == null ? '—' : fmt(v) + '%', aria: 'Удержание новых пользователей по неделям регистрации',
+    series: [{ name: 'Вернулись в течение 7 дней', color: E2.a, get: p => coh(p) ? pct(g(p.w, 'kpi.ret_w1'), coh(p)) : null },
+             { name: 'Вернулись на следующий день', color: E2.b, get: p => coh(p) ? pct(g(p.w, 'kpi.ret_d1'), coh(p)) : null },
+             { name: 'Сделали целевое действие', color: E2.c, get: p => coh(p) ? pct(g(p.w, 'kpi.activated'), coh(p)) : null }] });
+  const pf = v => v == null ? '—' : fmt(v) + '%';
+  const r7 = pct(A.kpi.ret_w1, A.kpi.reg), r1 = pct(A.kpi.ret_d1, A.kpi.reg), ra = pct(A.kpi.activated, A.kpi.reg);
+  const engBlock = `<section class="block" aria-labelledby="h-eng">
+    <div class="bhead"><h2 id="h-eng">Вовлечённость</h2><p>Пользуются ли приложением и возвращаются ли новички</p></div>
+    <div class="cgrid">
+      <div class="panel cp">
+        <div class="cpt"><h3>Активные пользователи</h3><span class="mono">Firebase + база · ${single ? 'за неделю' : 'в среднем за неделю'}</span></div>
+        <p class="lead">${ouA != null ? `<b class="num">${fmt(ouA)}</b> человек ${single ? 'открывали приложение за неделю' : 'в среднем за неделю открывали приложение'}${base ? ` — <b>${fmt(pct(ouA, base))}%</b> от ${fmt(base)} аккаунтов` : ''}. ` : ''}Что-то делали (чат, событие, клуб, свайп) — <b class="num">${fmt(rnd(A.kpi.wau))}</b>${ouA ? `, то есть <b>${fmt(pct(A.kpi.wau, ouA))}%</b> открывавших` : ''}.</p>
+        <div class="cpv" style="margin-top:-2px">${delta(ouA ?? A.kpi.wau, ouA != null ? ouP : P?.kpi.wau)}<span class="prev">${esc(cmpWord)}: ${ouA != null ? (ouP != null ? `${fmt(ouP)} открывали, ` : 'данных Firebase нет (они с 1 июня), ') : ''}${fmt(rnd(P?.kpi.wau))} делали</span></div>
+        ${legendHtml(actId, [{ name: 'Открывали приложение', color: E2.a, v: ouA }, { name: 'Что-то делали', color: E2.b, v: rnd(A.kpi.wau) }])}
+        <div class="chart" data-c="${actId}"></div>
+        <p class="cpn">«Открывали» — уникальные люди с запуском приложения за неделю (Firebase, с 1 июня). «Что-то делали» — по базе: открыли сессию, написали в чат, записались на событие, вступили в клуб, свайпнули или создали событие. Как читать: большой разрыв между линиями — люди заходят, но не находят, что сделать.</p>
+      </div>
+      <div class="panel cp">
+        <div class="cpt"><h3>Удержание новичков${flag('ret_w1')}</h3><span class="mono">база · по неделе регистрации</span></div>
+        <p class="lead">Из <b class="num">${fmt(A.kpi.reg)}</b> зарегистрировавшихся ${single ? 'за неделю' : 'за период'} на следующий день вернулись <b>${pf(r1)}</b>, в течение 7 дней — <b>${pf(r7)}</b>. Целевое действие сделали <b>${pf(ra)}</b>.${ouA ? ` А среди всех, кто открывал приложение, ${fmt(pct(retA, ouA))}% — вернувшиеся, остальные запустили его впервые.` : ''}</p>
+        <div class="cpv" style="margin-top:-2px">${delta(r7, P ? pct(P.kpi.ret_w1, P.kpi.reg) : null)}<span class="prev">возврат за 7 дней ${esc(cmpWord)}: ${pf(P ? pct(P.kpi.ret_w1, P.kpi.reg) : null)}</span></div>
+        ${legendHtml(retId, [{ name: 'Вернулись в течение 7 дней', color: E2.a, v: r7, fmt: pf }, { name: 'Вернулись на следующий день', color: E2.b, v: r1, fmt: pf }, { name: 'Сделали целевое действие', color: E2.c, v: ra, fmt: pf }])}
+        <div class="chart" data-c="${retId}"></div>
+        <p class="cpn">Каждая точка — люди, зарегистрировавшиеся в эту неделю. «Вернулись» — сделали в приложении хоть что-то после дня регистрации. «Целевое действие» — записались на событие, вступили в клуб, свайпнули или создали событие в первые 7 дней, включая день регистрации — поэтому эта линия может быть выше «вернулись». Недели, где регистраций меньше 5, не показаны: проценты там случайные. Последняя неделя предварительная, пока не прошло 7 дней.</p>
+      </div>
+    </div>
+  </section>`;
 
   /* --- регистрации по платформам --- */
   const keys = S.plat === 'all' ? ['ios', 'android', 'telegram', 'other'] : [S.plat];
@@ -439,11 +612,10 @@ function render() {
   const reg = regOf(A);
   const iosDl = A.stores.ios_first_downloads, playIn = A.play.installs;
   const fsteps = [
-    S.plat === 'all' && A.landing.visits != null ? { n: 'Визиты на лендинг', src: 'Метрика', v: A.landing.visits } : null,
-    L && S.plat === 'all' ? { n: 'Клики на кнопки сторов', src: 'Метрика · ' + L.clicksPeriod, v: (L.clicksAppStore || 0) + (L.clicksGooglePlay || 0) } : null,
     S.plat === 'all' && (iosDl != null || playIn != null) ? { n: 'Установки', src: `iOS ${fmt(iosDl)} · Android ${fmt(playIn)}`, v: (iosDl || 0) + (playIn || 0) } : null,
     S.plat === 'ios' && iosDl != null ? { n: 'Первые загрузки iOS', src: 'App Store Connect', v: iosDl } : null,
     S.plat === 'android' && playIn != null ? { n: 'Установки Android', src: 'Google Play · новые пользователи', v: playIn } : null,
+    foOf(A) != null ? { n: 'Первые открытия', src: 'Firebase · first_open', v: foOf(A) } : null,
     { n: 'Регистрации' + platNote, src: 'База', v: reg, base: true },
     S.plat === 'all' ? { n: 'Прошли онбординг', src: 'База · текущий статус', v: A.kpi.onboarded, ofReg: true } : null,
     S.plat === 'all' ? { n: 'Первое действие за 7 дней', src: 'событие, клуб, свайп', v: A.kpi.activated, k: 'activated', ofReg: true } : null,
@@ -462,15 +634,15 @@ function render() {
   const rows = sel.slice().reverse();
   const totRow = (cells) => n > 1 ? `<tr class="tot"><td>Итого за период</td>${cells}</tr>` : '';
   const cohort = rows.map(h => { const r = g(h, 'kpi.reg');
-    return `<tr><td>${esc(h.label)}</td><td>${fmt(r)}</td><td>${fmt(pct(g(h, 'kpi.onboarded'), r))}%</td><td>${fmt(pct(g(h, 'kpi.activated'), r))}%</td><td>${fmt(pct(g(h, 'kpi.ret_d1'), r))}%</td><td>${fmt(pct(g(h, 'kpi.ret_w1'), r))}%</td></tr>`; }).join('')
-    + totRow(`<td>${fmt(A.kpi.reg)}</td><td>${fmt(pct(A.kpi.onboarded, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.activated, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.ret_d1, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.ret_w1, A.kpi.reg))}%</td>`);
+    return `<tr><td>${esc(h.label)}</td><td>${fmt(r)}</td><td>${fmt(pct(g(h, 'kpi.onboarded'), r))}%</td><td>${fmt(pct(g(h, 'kpi.ret_d1'), r))}%</td><td>${fmt(pct(g(h, 'kpi.ret_w1'), r))}%</td><td>${fmt(pct(g(h, 'kpi.activated'), r))}%</td></tr>`; }).join('')
+    + totRow(`<td>${fmt(A.kpi.reg)}</td><td>${fmt(pct(A.kpi.onboarded, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.ret_d1, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.ret_w1, A.kpi.reg))}%</td><td>${fmt(pct(A.kpi.activated, A.kpi.reg))}%</td>`);
   const regTable = rows.map(h => `<tr><td>${esc(h.label)}</td><td>${g(h, 'platform.ios') ?? 0}</td><td>${g(h, 'platform.android') ?? 0}</td><td>${g(h, 'platform.telegram') ?? 0}</td><td>${g(h, 'platform.other') ?? 0}</td><td>${g(h, 'kpi.reg')}</td></tr>`).join('')
     + totRow(`<td>${A.platform.ios}</td><td>${A.platform.android}</td><td>${A.platform.telegram}</td><td>${A.platform.other}</td><td>${A.kpi.reg}</td>`);
   const storeTable = rows.map(h => { const pv = g(h, 'stores.ios_page_views'), dl = g(h, 'stores.ios_first_downloads');
     return `<tr><td>${esc(h.label)}</td><td>${fmt(g(h, 'stores.ios_impressions'))}</td><td>${fmt(pv)}</td><td>${fmt(g(h, 'stores.ios_page_views_unique'))}</td><td>${fmt(dl)}</td><td>${fmt(g(h, 'stores.ios_redownloads'))}</td><td>${fmt(g(h, 'stores.ios_installs'))}</td><td>${fmt(g(h, 'play.installs'))}</td></tr>`; }).join('')
     + totRow(`<td>${fmt(A.stores.ios_impressions)}</td><td>${fmt(A.stores.ios_page_views)}</td><td>${fmt(A.stores.ios_page_views_unique)}</td><td>${fmt(A.stores.ios_first_downloads)}</td><td>${fmt(A.stores.ios_redownloads)}</td><td>${fmt(A.stores.ios_installs)}</td><td>${fmt(A.play.installs)}</td>`);
   // все недельные показатели одной таблицей
-  const allCols = [['Рег.', 'kpi.reg'], ['Всего польз.', 'kpi.total_users'], ['Связ. акк.', 'kpi.linked'], ['Удал. запр.', 'kpi.del_req'], ['Открытия', 'kpi.sessions'], ['Из них новые', 'kpi.opens_new'], ['WAU', 'kpi.wau'], ['Событий', 'kpi.events_created'], ['Записей', 'kpi.event_joins'], ['Клубов', 'kpi.clubs_created'], ['Городов', 'kpi.club_cities'], ['Тренеров', 'kpi.new_coaches'], ['Сообщ.', 'kpi.messages'], ['Онб. всего', 'kpi.onb_total'], ['Ищут всего', 'kpi.seek_total'], ['Свайпы', 'kpi.swipes'], ['Свайпали', 'kpi.swipers'], ['Матчи', 'kpi.matches'], ['Бот: аудит.', 'kpi.tg_users'], ['Бот: блок.', 'kpi.tg_blocked'], ['iOS загр.', 'stores.ios_first_downloads'], ['Android уст.', 'play.installs'], ['Лендинг', 'landing.visits']];
+  const allCols = [['Рег.', 'kpi.reg'], ['Всего польз.', 'kpi.total_users'], ['Связ. акк.', 'kpi.linked'], ['Удал. запр.', 'kpi.del_req'], ['Первые откр.', 'fb.first_open'], ['Открытия', 'fb.opens'], ['Открывали', 'fb.opens_users'], ['Входы (база)', 'kpi.sessions'], ['Делали (WAU)', 'kpi.wau'], ['Событий', 'kpi.events_created'], ['Записей', 'kpi.event_joins'], ['Клубов', 'kpi.clubs_created'], ['Городов', 'kpi.club_cities'], ['Тренеров', 'kpi.new_coaches'], ['Сообщ.', 'kpi.messages'], ['Онб. всего', 'kpi.onb_total'], ['Ищут всего', 'kpi.seek_total'], ['Свайпы', 'kpi.swipes'], ['Свайпали', 'kpi.swipers'], ['Матчи', 'kpi.matches'], ['Бот: аудит.', 'kpi.tg_users'], ['Бот: блок.', 'kpi.tg_blocked'], ['iOS загр.', 'stores.ios_first_downloads'], ['Android уст.', 'play.installs']];
   const allTable = `<table><thead><tr><th>Неделя</th>${allCols.map(c => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.map(h => `<tr><td>${esc(h.label)}</td>${allCols.map(c => `<td>${fmt(g(h, c[1]))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 
   /* --- разделы с графиками --- */
@@ -482,11 +654,11 @@ function render() {
     K('Удалено аккаунтов', 'deleted', 'sum', 'база', { inv: true, color: crit, note: 'Удаление проходит после периода ожидания, поэтому отстаёт от запросов.' }),
   ]);
   const secActivity = grid([
-    card({ t: 'Открытия приложения', p: 'kpi.sessions', mode: 'sum', src: 'база: сессии',
-      series: [{ name: 'Новые пользователи', color: 'var(--accent)', get: w => g(w, 'kpi.opens_new') }, { name: 'Вернувшиеся', color: muted, get: w => { const a = g(w, 'kpi.sessions'), b = g(w, 'kpi.opens_new'); return a == null ? null : a - (b || 0); } }],
-      note: `Из них новыми пользователями: ${fmt(A.kpi.opens_new)}. Сессии пишут не все версии приложения, поэтому до сентября открытий меньше, чем активных.` }),
-    K(single ? 'Активные за неделю' : 'Активные, в среднем за неделю', 'wau', 'avg', 'база: любое действие'),
-    K('Средний DAU', 'dau_avg', 'avg', 'база: любое действие'),
+    card({ t: 'Открытия приложения', p: 'fb.opens', mode: 'sum', src: 'Firebase · session_start', empty: 'Данных Firebase за эти недели нет: они начинаются с 1 июня.',
+      series: [{ name: 'Открытий', color: 'var(--accent)', get: w => g(w, 'fb.opens') }],
+      note: perUser ? `Около ${fmt(perUser)} открытий на человека в неделю. Подробнее — в блоке «Открытия приложения» вверху.` : '' }),
+    card({ t: 'Входы в аккаунт', p: 'kpi.sessions', mode: 'sum', src: 'база: сессии', color: muted,
+      note: `Новые сессии авторизации в базе, из них у новых пользователей: ${fmt(A.kpi.opens_new)}. Пишутся при входе в аккаунт, а не при каждом запуске, поэтому их меньше, чем открытий.` }),
     K('Сообщения в чатах', 'messages', 'sum', 'база', { note: single ? `Писали: ${fmt(A.kpi.chat_users)} чел.` : `Писали в среднем ${fmt(A.kpi.chat_users)} чел. в неделю.` }),
   ]);
   const secEvents = grid([
@@ -520,7 +692,6 @@ function render() {
     card({ t: 'Просмотры страницы в App Store', p: 'stores.ios_page_views', mode: 'sum', src: 'App Store Connect', color: 'var(--s-ios)', empty: ascNote }),
     card({ t: 'Просмотры страницы · уникальные устройства', p: 'stores.ios_page_views_unique', mode: 'sum', src: 'App Store Connect', color: 'var(--s-ios)', empty: ascNote }),
     card({ t: 'Установки Android', p: 'play.installs', mode: 'sum', src: 'Google Play · новые пользователи', color: 'var(--s-android)', empty: 'Нет данных Google Play за эти недели.', note: 'Google Play считает сутки по тихоокеанскому времени, поэтому неделя сдвинута на несколько часов.' }),
-    card({ t: 'Визиты на лендинг', p: 'landing.visits', mode: 'sum', src: 'Яндекс Метрика', empty: 'Счётчик на лендинге работает с 5 июня.' }),
   ]);
   const secRet = grid([
     card({ t: 'Вернулись в первые 7 дней', p: 'x', v: pct(A.kpi.ret_w1, A.kpi.reg), pv: P ? pct(P.kpi.ret_w1, P.kpi.reg) : null, k: 'ret_w1', mode: 'sum', src: '% от регистраций недели', fmt: v => v == null ? '—' : fmt(v) + '%',
@@ -537,11 +708,13 @@ function render() {
 
   const autoSummary = [
     { tone: !P ? 'flat' : regOf(A) >= regOf(P) ? 'up' : 'down', text: `Регистраций ${fmt(regOf(A))}${P ? ` против ${fmt(regOf(P))} ${cmpWord}` : ''}.` },
-    { tone: !P ? 'flat' : (A.kpi.wau ?? 0) >= (P.kpi.wau ?? 0) ? 'up' : 'down', text: `Активных в среднем ${fmt(A.kpi.wau)} в неделю${P ? ` против ${fmt(P.kpi.wau)}` : ''}, средний DAU ${fmt(A.kpi.dau_avg)}.` },
-    { tone: 'warn', text: `Вернулись в первые 7 дней ${fmt(pct(A.kpi.ret_w1, A.kpi.reg))}% новых, первое действие сделали ${fmt(pct(A.kpi.activated, A.kpi.reg))}%.` },
+    ouA != null ? { tone: ouP == null ? 'flat' : ouA >= ouP ? 'up' : 'down', text: `Приложение открывали ${fmt(ouA)} человек ${single ? 'за неделю' : 'в среднем за неделю'}${ouP != null ? ` против ${fmt(ouP)}` : ''}; что-то делали ${fmt(A.kpi.wau)}.` }
+      : { tone: !P ? 'flat' : (A.kpi.wau ?? 0) >= (P.kpi.wau ?? 0) ? 'up' : 'down', text: `Активных в среднем ${fmt(A.kpi.wau)} в неделю${P ? ` против ${fmt(P.kpi.wau)}` : ''}, средний DAU ${fmt(A.kpi.dau_avg)}.` },
+    foOf(A) != null && regOf(A) != null ? { tone: 'flat', text: `Из ${fmt(foOf(A))} первых открытий зарегистрировались ${fmt(regOf(A))} (${convTxt(regOf(A), foOf(A))}).` } : null,
+    { tone: 'warn', text: `Из новых пользователей в течение недели вернулись ${fmt(pct(A.kpi.ret_w1, A.kpi.reg))}%, целевое действие сделали ${fmt(pct(A.kpi.activated, A.kpi.reg))}%.` },
     { tone: !P ? 'flat' : (A.kpi.del_req ?? 0) <= (P.kpi.del_req ?? 0) ? 'up' : 'down', text: `Запросов на удаление аккаунта ${fmt(A.kpi.del_req)}${P ? ` против ${fmt(P.kpi.del_req)}` : ''}.` },
   ];
-  const summary = single && R ? R.summary : autoSummary;
+  const summary = single && R ? R.summary : autoSummary.filter(Boolean);
   const headline = single && R ? (R.headline || 'Итоги недели') : (single ? 'Итоги недели' : `Итоги за ${n} ${weeksWord(n)}`);
 
   app.innerHTML = `
@@ -558,9 +731,12 @@ function render() {
     </aside>
   </section>
 
-  <section class="kpis" aria-label="Ключевые показатели">${kpiHtml}</section>
+  ${mainBlock}
+  ${devBlock}
+  ${opensBlock}
+  ${engBlock}
 
-  <p class="chartnote">На графиках — недели ${esc(chartRange)}. Подписаны значения и дата начала недели (понедельник).${selFrom > 0 ? ' Бледные столбцы — недели до выбранного периода, для контекста.' : ''}${n > 16 ? ' Если подписи не помещаются, подписан каждый второй столбец и максимум; на телефоне длинные графики листаются вбок. Точное значение любой недели — при наведении и в таблице внизу.' : ''}</p>
+  <p class="chartnote">Столбчатые графики ниже — по неделям ${esc(chartRange)}, подписана дата начала недели.${selFrom > 0 ? ' Бледные столбцы и серая полоса на линиях — недели до выбранного периода, для контекста.' : ''} Точное значение любой недели — при наведении и в таблице внизу.</p>
 
   ${R ? `<section class="block" aria-labelledby="h-an">
     <div class="bhead"><h2 id="h-an">Что произошло и почему${single ? '' : ' · неделя ' + esc(repWeek.label)}</h2><p>${single ? 'Аномалия: отклонение больше ±15% к прошлой неделе или больше 2σ от нормы за 8 недель' : 'Разбор сохранён по неделям; показан последний в выбранном периоде'}</p></div>
@@ -584,25 +760,20 @@ function render() {
           <div class="stat"><span class="eyebrow">Первые запуски</span><span class="v num">${fmt(G.play28d.firstOpens)}</span>${delta(G.play28d.firstOpens, G.play28d.firstOpens / (1 + G.play28d.firstOpensDelta / 100))}</div>
           <div class="stat"><span class="eyebrow">Активные устройства</span><span class="v num">${fmt(G.play28d.activeDevicesMonth)}</span>${delta(G.play28d.activeDevicesMonth, G.play28d.activeDevicesMonth / (1 + G.play28d.activeDevicesDelta / 100))}</div></div>
           <p class="muted" style="font-size:12.5px;margin-top:8px">Скользящие 28 дней из панели Google Play на дату отчёта ${esc(repWeek.label)}.</p></div>` : ''}
-        ${L ? `<div><div class="phead"><h3>Лендинг app.runconnect.ru</h3><span class="mono">Метрика</span></div>
-          <div class="stats"><div class="stat"><span class="eyebrow">Из рекламы</span><span class="v num">${fmt(L.adShare)}%</span></div><div class="stat"><span class="eyebrow">Отказы</span><span class="v num">${fmt(L.bounce)}%</span></div><div class="stat"><span class="eyebrow">Клики на сторы</span><span class="v num">${fmt(L.clicksAppStore + L.clicksGooglePlay)}</span><span class="muted" style="font-size:12px">App Store ${L.clicksAppStore} · Google Play ${L.clicksGooglePlay}</span></div></div>
-          ${L.dailyVisits && G.dailyReg ? `<div class="grid2e" style="margin-top:12px;gap:12px"><div><div class="eyebrow">Визиты по дням</div>${slot({ weeks: ['пн','вт','ср','чт','пт','сб','вс'].map((d, i) => ({ week: addDays(repWeek.week, i), label: d })), selFrom: 0, h: 150, series: one(w => L.dailyVisits[(D(w.week).getDay() + 6) % 7], 'var(--s-ios)') })}</div><div><div class="eyebrow">Регистрации по дням</div>${slot({ weeks: ['пн','вт','ср','чт','пт','сб','вс'].map((d, i) => ({ week: addDays(repWeek.week, i), label: d })), selFrom: 0, h: 150, series: one(w => G.dailyReg[(D(w.week).getDay() + 6) % 7]) })}</div></div>` : ''}</div>`
-        : `<div><div class="phead"><h3>Лендинг app.runconnect.ru</h3><span class="mono">Метрика</span></div><p class="muted" style="font-size:13px">Отказы, доля рекламы и клики на сторы сохраняются по неделям: выберите одну неделю с отчётом, чтобы их увидеть.</p></div>`}
+        ${G?.cities ? `<div><div class="phead"><h3>Города новых пользователей · ${esc(repWeek.label)}</h3><span class="mono">база</span></div>
+        <div class="tscroll" style="margin:0"><table><thead><tr><th>Город</th><th>Неделя</th><th>Прошлая</th><th>Всего</th></tr></thead><tbody>${G.cities.map(c => `<tr><td>${esc(c.city)}</td><td>${c.week}</td><td>${c.prev}</td><td>${c.total}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
       </div>
     </div>
   </section>
 
-  ${sec('h-st', 'Сторы и лендинг', 'App Store, Google Play и сайт по неделям', secStores + `<details class="tbl"><summary>Сторы — таблица</summary><div class="tscroll"><table><thead><tr><th>Неделя</th><th>Показы</th><th>Страница</th><th>Уник.</th><th>Первые загр.</th><th>Повторные</th><th>Установки iOS</th><th>Установки Android</th></tr></thead><tbody>${storeTable}</tbody></table></div></details>`)}
+  ${sec('h-st', 'Сторы', 'App Store и Google Play по неделям', secStores + `<details class="tbl"><summary>Сторы — таблица</summary><div class="tscroll"><table><thead><tr><th>Неделя</th><th>Показы</th><th>Страница</th><th>Уник.</th><th>Первые загр.</th><th>Повторные</th><th>Установки iOS</th><th>Установки Android</th></tr></thead><tbody>${storeTable}</tbody></table></div></details>`)}
   ${sec('h-us', 'Пользователи', 'База, связанные аккаунты и отток', secUsers)}
   ${sec('h-ac', 'Активность', 'Как часто открывают приложение и общаются', secActivity)}
   ${sec('h-ev', 'События и клубы', 'Что создают и куда записываются', secEvents)}
   ${sec('h-pa', 'Напарники', 'Онбординг, подбор и свайпы', secPartners)}
   ${sec('h-bot', 'Telegram-бот', 'Аудитория и блокировки', secBot)}
-  ${sec('h-rt', 'Удержание', 'Доля новых пользователей, которые вернулись и что-то сделали', secRet + `<div class="panel"><div class="phead"><h3>Когорты новых пользователей</h3><span class="mono">доля от регистраций недели</span></div>
-        <div class="tscroll" style="margin:0"><table><thead><tr><th>Когорта</th><th>Рег.</th><th>Онбординг</th><th>Действие 7д</th><th>D1</th><th>Возврат 7д</th></tr></thead><tbody>${cohort}</tbody></table></div>
-        <p class="muted" style="font-size:12.5px;margin-top:8px">Последняя когорта предварительная, пока не прошло 7 дней с последней регистрации.</p></div>
-      ${G?.cities ? `<div class="panel"><div class="phead"><h3>Города новых пользователей · ${esc(repWeek.label)}</h3><span class="mono">база</span></div>
-        <div class="tscroll" style="margin:0"><table><thead><tr><th>Город</th><th>Неделя</th><th>Прошлая</th><th>Всего</th></tr></thead><tbody>${G.cities.map(c => `<tr><td>${esc(c.city)}</td><td>${c.week}</td><td>${c.prev}</td><td>${c.total}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`)}
+  ${sec('h-rt', 'Когорты новых пользователей', 'Те же данные, что в блоке «Удержание новичков», по каждой неделе регистрации', `<div class="panel"><div class="tscroll" style="margin:0"><table><thead><tr><th>Неделя регистрации</th><th>Регистраций</th><th>Прошли онбординг</th><th>Вернулись на след. день</th><th>Вернулись за 7 дней</th><th>Целевое действие за 7 дней</th></tr></thead><tbody>${cohort}</tbody></table></div>
+        <p class="muted" style="font-size:12.5px;margin-top:8px">Последняя неделя предварительная, пока не прошло 7 дней с последней регистрации.</p></div>`)}
 
   <section class="block" aria-labelledby="h-q">
     <div class="bhead"><h2 id="h-q">Качество</h2><p>Стабильность приложения и бэкенда, доставка уведомлений</p></div>
@@ -632,6 +803,109 @@ function render() {
   drawCharts();
 }
 
+/* ---------- раздел «Лендинг» ----------
+   Данные Метрики по дням (weeks.json → landing.daily). Период берётся тот же, что выбран сверху,
+   границы — понедельник–воскресенье. */
+const MG2 = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const dayLabel = d => { const x = D(d); return x.getDate() + ' ' + MG2[x.getMonth()]; };
+const tfmt = s => s == null ? '—' : (s >= 60 ? Math.floor(s / 60) + ' м ' + Math.round(s % 60) + ' с' : Math.round(s) + ' с');
+function renderLanding() {
+  const app = document.getElementById('app');
+  CH = {}; chSeq = 0;
+  const LD = S.landing;
+  if (!LD || !S.weeks.length) { app.innerHTML = `<div class="empty"><h2>Данных лендинга пока нет</h2></div>`; return; }
+  const pi = periodIdx();
+  if (!pi) { app.innerHTML = `<div class="empty"><h2>За выбранный период данных нет</h2></div>`; return; }
+  const [i0, i1] = pi, n = i1 - i0 + 1, single = n === 1;
+  const first = S.weeks[i0].week, last = addDays(S.weeks[i1].week, 6);
+  const lastData = Object.keys(LD.daily).sort().pop();
+  const end = last > lastData ? lastData : last;
+  const F = LD.fields, ix = k => F.indexOf(k);
+  const day = d => LD.daily[d] || null;
+  const range = (a, b) => { const out = []; for (let d = a; d <= b; d = addDays(d, 1)) out.push(d); return out; };
+  function sum(a, b, strict) {
+    if (strict && a < LD.since) return null;
+    const ds = range(a, b).map(day).filter(Boolean); if (!ds.length) return null;
+    const t = k => ds.reduce((s, r) => s + r[ix(k)], 0);
+    const v = t('visits');
+    return { visits: v, visitors: t('visitors'), views: t('views'), ad: t('adVisits'), as: t('clicksAppStore'), gp: t('clicksGooglePlay'),
+      bounce: v ? ds.reduce((s, r) => s + r[ix('bounce')] * r[ix('visits')], 0) / v : null,
+      time: v ? ds.reduce((s, r) => s + r[ix('timeSec')] * r[ix('visits')], 0) / v : null };
+  }
+  const A = sum(first, end), P = i0 - n >= 0 ? sum(S.weeks[i0 - n].week, addDays(first, -1), true) : null;
+  const perLabel = rangeLabel(first < LD.since ? LD.since : first, end);
+  const cmpWord = single ? 'неделей раньше' : `за предыдущие ${n} ${weeksWord(n)}`;
+  // для коротких периодов показываем 8 недель, чтобы был виден контекст
+  const c0 = n >= 8 ? first : addDays(last, -55);
+  const cstart = c0 < LD.since ? LD.since : c0;
+  const days = range(cstart, end);
+  const selFrom = Math.max(0, days.indexOf(first));
+  const dpts = days.map(d => ({ key: d, label: dayLabel(d), xl: dnum(d), r: day(d) }));
+  const gv = k => p => p.r ? p.r[ix(k)] : null;
+  if (!A) { app.innerHTML = `<div class="empty"><h2>Счётчик на лендинге работает с 5 июня</h2><p class="muted">Выберите период позже этой даты.</p></div>`; return; }
+  const C3 = { a: 'var(--l-1)', b: 'var(--l-2)', c: 'var(--l-3)' };
+  const visId = slotId({ type: 'line', pts: dpts, selFrom, h: 300, aria: 'Визиты, посетители и просмотры лендинга по дням',
+    series: [{ name: 'Визиты', color: C3.a, get: gv('visits') }, { name: 'Посетители', color: C3.b, get: gv('visitors') }, { name: 'Просмотры', color: C3.c, get: gv('views') }] });
+  const clkId = slotId({ type: 'line', pts: dpts, selFrom, h: 240, aria: 'Клики на кнопки сторов по дням',
+    series: [{ name: 'App Store', color: 'var(--s-ios)', get: gv('clicksAppStore') }, { name: 'Google Play', color: 'var(--s-android)', get: gv('clicksGooglePlay') }] });
+  // источники по неделям: реклама и остальное
+  const cw0 = n >= 8 ? i0 : Math.max(0, i1 - 7);
+  const wks = S.weeks.slice(cw0, i1 + 1).filter(w => addDays(w.week, 6) >= LD.since);
+  const wsum = w => sum(w.week, addDays(w.week, 6));
+  const srcId = slotId({ weeks: wks, selFrom: Math.max(0, wks.findIndex(w => w.week >= first)), aria: 'Визиты из рекламы и других источников по неделям',
+    series: [{ name: 'Реклама', color: 'var(--l-1)', get: w => wsum(w)?.ad ?? null }, { name: 'Другие источники', color: 'var(--s-other)', get: w => { const s = wsum(w); return s ? s.visits - s.ad : null; } }] });
+  const clicks = A.as + A.gp, pclicks = P ? P.as + P.gp : null;
+  const inst = S.weeks.slice(i0, i1 + 1).reduce((s, w) => s + (g(w, 'stores.ios_first_downloads') || 0) + (g(w, 'play.installs') || 0), 0);
+  const steps = [{ n: 'Визиты на лендинг', v: A.visits, src: 'Метрика' }, { n: 'Клики на кнопки сторов', v: clicks, src: `App Store ${A.as} · Google Play ${A.gp}` }, { n: 'Установки', v: inst, src: 'App Store Connect + Google Play, из всех источников' }];
+  const fmax = Math.max(1, ...steps.map(s => s.v || 0));
+  const funnel = steps.map((f, i) => { const c = i ? pct(f.v, steps[i - 1].v) : null;
+    const ct = c == null ? '—' : (c > 100 ? 'больше предыдущего шага: большинство ставит приложение не через лендинг' : fmt(c) + '% от предыдущего шага');
+    return `${i ? `<div class="fconv">↓ ${ct}</div>` : ''}<div class="fstep"><div class="lbl">${esc(f.n)}<small>${esc(f.src)}</small></div><div class="fbar"><b style="width:${Math.max(0.5, (f.v || 0) / fmax * 100)}%"></b></div><div class="fv num">${fmt(f.v)}</div></div>`; }).join('');
+  const stotal = LD.sources.rows.reduce((s, r) => s + r[1], 0);
+  const drows = range(first, end).reverse().map(d => { const r = day(d); return r ? `<tr><td>${esc(dayLabel(d))}</td><td>${r[ix('visits')]}</td><td>${r[ix('visitors')]}</td><td>${r[ix('views')]}</td><td>${r[ix('visits')] ? fmt(r[ix('bounce')]) + '%' : '—'}</td><td>${r[ix('visits')] ? tfmt(r[ix('timeSec')]) : '—'}</td><td>${r[ix('adVisits')]}</td><td>${r[ix('clicksAppStore')]}</td><td>${r[ix('clicksGooglePlay')]}</td></tr>` : ''; }).join('');
+  app.innerHTML = `
+  <section class="hero one" aria-labelledby="h1">
+    <div>
+      <div class="eyebrow">Лендинг app.runconnect.ru · ${esc(perLabel)} · Яндекс Метрика</div>
+      <h1 id="h1">${fmt(A.visits)} ${A.visits % 10 === 1 && A.visits % 100 !== 11 ? 'визит' : (A.visits % 10 >= 2 && A.visits % 10 <= 4 && (A.visits % 100 < 10 || A.visits % 100 >= 20) ? 'визита' : 'визитов')} и ${fmt(clicks)} ${clicks % 10 === 1 && clicks % 100 !== 11 ? 'клик' : (clicks % 10 >= 2 && clicks % 10 <= 4 && (clicks % 100 < 10 || clicks % 100 >= 20) ? 'клика' : 'кликов')} на кнопки сторов</h1>
+      <p class="sub">${P ? 'Сравнение с периодом той же длины: ' + esc(rangeLabel(S.weeks[i0 - n].week, addDays(first, -1))) + '.' : 'Для сравнения не хватает данных до начала периода: счётчик работает с 5 июня.'} Данные по ${esc(dayLabel(lastData))} включительно.</p>
+    </div>
+  </section>
+  <section class="panel big" aria-labelledby="h-lv">
+    <div class="bigh"><div><h2 id="h-lv">Посещаемость сайта</h2><p class="muted">По дням, ${esc(rangeLabel(cstart, end))}. Нажмите на показатель, чтобы скрыть или вернуть линию.</p></div></div>
+    ${legendHtml(visId, [{ name: 'Визиты', color: C3.a, v: A.visits, delta: delta(A.visits, P?.visits) }, { name: 'Посетители', color: C3.b, v: A.visitors, delta: delta(A.visitors, P?.visitors) }, { name: 'Просмотры', color: C3.c, v: A.views, delta: delta(A.views, P?.views) }])}
+    <div class="chart" data-c="${visId}"></div>
+    <p class="cpn">Посетители за период сложены из дневных значений: человек, заходивший в разные дни, посчитан несколько раз.</p>
+  </section>
+  <section class="panel" aria-label="Качество трафика">
+    <div class="stats">
+      <div class="stat"><span class="eyebrow">Отказы</span><span class="v num">${fmt(A.bounce)}%</span>${delta(A.bounce, P?.bounce, true)}</div>
+      <div class="stat"><span class="eyebrow">Время на сайте</span><span class="v num">${tfmt(A.time)}</span><span class="muted" style="font-size:12px">в среднем за визит</span></div>
+      <div class="stat"><span class="eyebrow">Из рекламы</span><span class="v num">${fmt(pct(A.ad, A.visits))}%</span><span class="muted" style="font-size:12px">${fmt(A.ad)} визитов</span></div>
+      <div class="stat"><span class="eyebrow">Клики на сторы</span><span class="v num">${fmt(clicks)}</span>${delta(clicks, pclicks)}</div>
+      <div class="stat"><span class="eyebrow">Визит → клик</span><span class="v num">${fmt(pct(clicks, A.visits))}%</span><span class="muted" style="font-size:12px">${P ? cmpWord + ': ' + fmt(pct(pclicks, P.visits)) + '%' : ''}</span></div>
+    </div>
+  </section>
+  <div class="cgrid">
+    <div class="panel cp"><div class="cpt"><h3>Клики на кнопки сторов</h3><span class="mono">Метрика · цели «Клик на App Store» и «Клик на Google Play»</span></div>
+      ${legendHtml(clkId, [{ name: 'App Store', color: 'var(--s-ios)', v: A.as, delta: delta(A.as, P?.as) }, { name: 'Google Play', color: 'var(--s-android)', v: A.gp, delta: delta(A.gp, P?.gp) }])}
+      <div class="chart" data-c="${clkId}"></div></div>
+    <div class="panel cp"><div class="cpt"><h3>Откуда приходят</h3><span class="mono">визиты по неделям</span></div>
+      <div class="legend"><span><i style="background:var(--l-1)"></i>Реклама</span><span><i style="background:var(--s-other)"></i>Другие источники</span></div>
+      <div class="chart" data-c="${srcId}"></div></div>
+  </div>
+  <div class="grid2e">
+    <div class="panel"><div class="phead"><h3>От лендинга до установки</h3><span class="mono">${esc(perLabel)}</span></div><div class="funnel">${funnel}</div>
+      <p class="cpn" style="margin-top:10px">Установки считаются по всем источникам: магазин не сообщает, сколько людей пришло именно с лендинга.</p></div>
+    <div class="panel"><div class="phead"><h3>Источники трафика</h3><span class="mono">${esc(LD.sources.period)}</span></div>
+      <div class="tscroll" style="margin:0"><table><thead><tr><th>Источник</th><th>Визиты</th><th>Доля</th></tr></thead><tbody>${LD.sources.rows.map(r => `<tr><td>${esc(r[0])}</td><td>${fmt(r[1])}</td><td>${fmt(pct(r[1], stotal))}%</td></tr>`).join('')}</tbody></table></div>
+      <p class="cpn" style="margin-top:8px">За всё время работы счётчика; по неделям доля рекламы — на графике слева.</p></div>
+  </div>
+  <details class="tbl"><summary>Все дни периода — таблица</summary><div class="tscroll"><table><thead><tr><th>День</th><th>Визиты</th><th>Посетители</th><th>Просмотры</th><th>Отказы</th><th>Время</th><th>Из рекламы</th><th>App Store</th><th>Google Play</th></tr></thead><tbody>${drows}</tbody></table></div></details>
+  <footer>Источник — Яндекс Метрика, счётчик 109614433. Сутки по Москве. Клик на кнопку стора ещё не значит установку: часть людей уходит со страницы магазина.</footer>`;
+  drawCharts();
+}
+
 /* ---------- управление ---------- */
 function setSeg(id, v) { document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v)))); }
 function syncDates() {
@@ -650,6 +924,8 @@ document.getElementById('dFrom').addEventListener('change', e => { S.from = e.ta
 document.getElementById('dTo').addEventListener('change', e => { S.to = e.target.value; render(); });
 document.getElementById('plat').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.plat = b.dataset.v; setSeg('plat', S.plat); render(); });
 setSeg('period', S.preset); setSeg('plat', S.plat);
+document.getElementById('tab').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.tab = b.dataset.v; setSeg('tab', S.tab); history.replaceState(null, '', S.tab === 'landing' ? '#landing' : location.pathname); render(); scrollTo(0, 0); });
+setSeg('tab', S.tab);
 function fillWeeks() { syncDates(); }
 
 /* ---------- подсказки ---------- */
@@ -667,7 +943,7 @@ document.addEventListener('pointerleave', () => { tip.hidden = true; });
 /* ---------- data ---------- */
 fetch('weeks.json', { cache: 'no-store' })
   .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-  .then(d => { S.weeks = (d.weeks || d).slice().sort((a, b) => a.week < b.week ? -1 : 1); fillWeeks(); render(); })
+  .then(d => { S.weeks = (d.weeks || d).slice().sort((a, b) => a.week < b.week ? -1 : 1); S.landing = d.landing || null; fillWeeks(); render(); })
   .catch(err => { document.getElementById('app').innerHTML = `<div class="empty"><h2>Не удалось загрузить данные</h2><p class="muted">${esc(err.message)}. Обновите страницу через минуту.</p></div>`; });
 })();
 </script>
