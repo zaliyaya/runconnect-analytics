@@ -587,9 +587,9 @@ function render() {
   /* --- Главный блок: воронка установка → первое открытие → регистрация --- */
   const C3 = { inst: 'var(--l-1)', open: 'var(--l-2)', reg: 'var(--l-3)' };
   const instOf = a => { if (!a) return null; const i = a.stores.ios_first_downloads, p = a.play.installs;
-    if (S.plat === 'ios') return i; if (S.plat === 'android') return p; if (S.plat === 'telegram') return null; return i == null && p == null ? null : (i || 0) + (p || 0); };
+    if (S.plat === 'ios') return i; if (S.plat === 'android') return p; if (S.plat === 'telegram') return null; return i == null || p == null ? null : i + p; };
   const instW = w => { const i = g(w, 'stores.ios_first_downloads'), p = g(w, 'play.installs');
-    if (S.plat === 'ios') return i ?? null; if (S.plat === 'android') return p ?? null; if (S.plat === 'telegram') return null; return i == null && p == null ? null : (i || 0) + (p || 0); };
+    if (S.plat === 'ios') return i ?? null; if (S.plat === 'android') return p ?? null; if (S.plat === 'telegram') return null; return i == null || p == null ? null : i + p; };
   const FOK = { all: 'first_open', ios: 'first_open_ios', android: 'first_open_android' };
   const foOf = a => a && FOK[S.plat] ? a.fb[FOK[S.plat]] : null;
   const foW = w => FOK[S.plat] ? (g(w, 'fb.' + FOK[S.plat]) ?? null) : null;
@@ -613,9 +613,9 @@ function render() {
   /* --- Установки по устройствам --- */
   const devId = slotId({ type: 'line', pts: wpts, selFrom, h: 260, aria: 'Установки iOS и Android по неделям',
     series: [{ name: 'iOS', color: 'var(--s-ios)', get: p => g(p.w, 'stores.ios_first_downloads') }, { name: 'Android', color: 'var(--s-android)', get: p => g(p.w, 'play.installs') }] });
-  const iosA = A.stores.ios_first_downloads, andA = A.play.installs, devTot = (iosA || 0) + (andA || 0);
+  const iosA = A.stores.ios_first_downloads, andA = A.play.installs, devTot = iosA == null || andA == null ? null : iosA + andA;
   const devBlock = `<section class="panel big" aria-labelledby="h-dev">
-    <div class="bigh"><div><h2 id="h-dev">Установки по устройствам</h2><p class="muted">${devTot ? `iOS — ${fmt(pct(iosA, devTot))}%, Android — ${fmt(pct(andA, devTot))}% установок ${single ? 'за неделю' : 'за период'}.` : 'Нет данных об установках за этот период.'}${A.fb.first_open ? ` Первые открытия: iOS ${fmt(A.fb.first_open_ios)}, Android ${fmt(A.fb.first_open_android)}.` : ''}</p></div></div>
+    <div class="bigh"><div><h2 id="h-dev">Установки по устройствам</h2><p class="muted">${devTot != null && devTot > 0 ? `iOS — ${fmt(pct(iosA, devTot))}%, Android — ${fmt(pct(andA, devTot))}% установок ${single ? 'за неделю' : 'за период'}.` : devTot === 0 ? 'За этот период установок нет.' : 'Нет полного набора данных по iOS и Android: доли и общий итог не рассчитаны.'}${A.fb.first_open_ios != null || A.fb.first_open_android != null ? ` Первые открытия: iOS ${fmt(A.fb.first_open_ios)}, Android ${fmt(A.fb.first_open_android)}.` : ''}</p></div></div>
     ${legendHtml(devId, [
       { name: 'iOS', color: 'var(--s-ios)', v: iosA, delta: delta(iosA, P?.stores.ios_first_downloads) },
       { name: 'Android', color: 'var(--s-android)', v: andA, delta: delta(andA, P?.play.installs) }])}
@@ -690,7 +690,7 @@ function render() {
   const reg = regOf(A);
   const iosDl = A.stores.ios_first_downloads, playIn = A.play.installs;
   const fsteps = [
-    S.plat === 'all' && (iosDl != null || playIn != null) ? { n: 'Установки', src: `iOS ${fmt(iosDl)} · Android ${fmt(playIn)}`, v: (iosDl || 0) + (playIn || 0) } : null,
+    S.plat === 'all' && iosDl != null && playIn != null ? { n: 'Установки', src: `iOS ${fmt(iosDl)} · Android ${fmt(playIn)}`, v: iosDl + playIn } : null,
     S.plat === 'ios' && iosDl != null ? { n: 'Первые загрузки iOS', src: 'App Store Connect', v: iosDl } : null,
     S.plat === 'android' && playIn != null ? { n: 'Установки Android', src: 'Google Play · новые пользователи', v: playIn } : null,
     foOf(A) != null ? { n: 'Первые открытия', src: 'Firebase · first_open', v: foOf(A) } : null,
@@ -933,7 +933,8 @@ function renderLanding() {
   const srcId = slotId({ weeks: wks, selFrom: Math.max(0, wks.findIndex(w => w.week >= first)), aria: 'Визиты из рекламы и других источников по неделям',
     series: [{ name: 'Реклама', color: 'var(--l-1)', get: w => wsum(w)?.ad ?? null }, { name: 'Другие источники', color: 'var(--s-other)', get: w => { const s = wsum(w); return s ? s.visits - s.ad : null; } }] });
   const clicks = A.as + A.gp, pclicks = P ? P.as + P.gp : null;
-  const inst = S.weeks.slice(i0, i1 + 1).reduce((s, w) => s + (g(w, 'stores.ios_first_downloads') || 0) + (g(w, 'play.installs') || 0), 0);
+  const instWeeks = S.weeks.slice(i0, i1 + 1);
+  const inst = instWeeks.some(w => g(w, 'stores.ios_first_downloads') == null || g(w, 'play.installs') == null) ? null : instWeeks.reduce((s, w) => s + g(w, 'stores.ios_first_downloads') + g(w, 'play.installs'), 0);
   const steps = [{ n: 'Визиты на лендинг', v: A.visits, src: 'Метрика' }, { n: 'Клики на кнопки сторов', v: clicks, src: `App Store ${A.as} · Google Play ${A.gp}` }, { n: 'Установки', v: inst, src: 'App Store Connect + Google Play, из всех источников' }];
   const fmax = Math.max(1, ...steps.map(s => s.v || 0));
   const funnel = steps.map((f, i) => { const c = i ? pct(f.v, steps[i - 1].v) : null;
