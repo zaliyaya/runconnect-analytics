@@ -403,10 +403,10 @@ function agg(list, strict) {
   AVGS.forEach(k => kpi[k] = avg('kpi.' + k));
   SNAPS.forEach(k => kpi[k] = last('kpi.' + k));
   const platform = {}; ['ios', 'android', 'telegram', 'other'].forEach(k => platform[k] = sum('platform.' + k) ?? 0);
-  const stores = {}; STORES.forEach(k => stores[k] = sum('stores.' + k));
+  const stores = {}; STORES.forEach(k => stores[k] = vals('stores.' + k).length === list.length ? sum('stores.' + k) : null);
   const fb = {}; ['first_open', 'first_open_ios', 'first_open_android', 'opens'].forEach(k => fb[k] = sum('fb.' + k)); ['active_users', 'opens_users'].forEach(k => fb[k] = avg('fb.' + k));
   if (strict && vals('fb.opens').length < list.length) { fb.active_users = null; fb.opens_users = null; }
-  return { n: list.length, kpi, platform, stores, fb, landing: { visits: sum('landing.visits') }, play: { installs: sum('play.installs') },
+  return { n: list.length, kpi, platform, stores, fb, landing: { visits: sum('landing.visits') }, play: { installs: vals('play.installs').length === list.length ? sum('play.installs') : null },
     first: list[0].week, lastDay: addDays(list[list.length - 1].week, 6) };
 }
 function regOf(a) { return a == null ? null : (S.plat === 'all' ? a.kpi.reg : (a.platform[S.plat] ?? 0)); }
@@ -598,6 +598,8 @@ function render() {
   const mainId = slotId({ type: 'line', pts: wpts, selFrom, h: 300, aria: 'Установки, первые открытия приложения и регистрации по неделям',
     series: [{ name: 'Установки', color: C3.inst, get: p => instW(p.w) }, { name: 'Первые открытия', color: C3.open, get: p => foW(p.w) }, { name: 'Регистрации', color: C3.reg, get: p => regW(p.w) }] });
   const instA = instOf(A), foA = foOf(A), regA = regOf(A);
+  const storeCoverageNotes = sel.map(w => w.report?.storeCoverageNote).filter(Boolean);
+  const storeCoverageHtml = storeCoverageNotes.length ? `<p class="cpn"><b>Неполные данные установок.</b> ${storeCoverageNotes.map(esc).join(' ')}</p>` : '';
   const convTxt = (a, b) => { const c = pct(a, b); return c == null ? '—' : c > 100 ? 'больше 100%' : fmt(c) + '%'; };
   const mainBlock = `<section class="panel big" aria-labelledby="h-main">
     <div class="bigh"><div><h2 id="h-main">Установка → первое открытие → регистрация${esc(platNote)}</h2><p class="muted">По неделям, ${esc(chartRange)}. Цифры в легенде — ${single ? 'за неделю' : 'за выбранный период'} и изменение ${esc(cmpWord)}. Нажмите на показатель, чтобы скрыть или вернуть линию.</p></div></div>
@@ -607,6 +609,7 @@ function render() {
       { name: 'Первые открытия', color: C3.open, v: foA, delta: delta(foA, foOf(P)) },
       { name: 'Регистрации', color: C3.reg, v: regA, delta: delta(regA, regOf(P)) }])}
     <div class="chart" data-c="${mainId}"></div>
+    ${storeCoverageHtml}
     <p class="cpn">Установки — первые загрузки iOS (App Store Connect) плюс новые установки Android (Google Play). Первые открытия — событие first_open в Firebase: человек установил приложение и запустил его в первый раз на этом устройстве; данные с 1 июня. На Android первых открытий больше, чем установок в Google Play: first_open срабатывает и после переустановки или очистки данных, а Google Play такие установки новыми не считает. Регистрации — новые аккаунты в базе.</p>
   </section>`;
 
@@ -620,6 +623,7 @@ function render() {
       { name: 'iOS', color: 'var(--s-ios)', v: iosA, delta: delta(iosA, P?.stores.ios_first_downloads) },
       { name: 'Android', color: 'var(--s-android)', v: andA, delta: delta(andA, P?.play.installs) }])}
     <div class="chart" data-c="${devId}"></div>
+    ${storeCoverageHtml}
     <p class="cpn">iOS — первые загрузки из App Store Connect (сутки по UTC). Android — новые пользователи из Google Play (сутки по тихоокеанскому времени).</p>
   </section>`;
 
