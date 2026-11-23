@@ -765,7 +765,7 @@ function render() {
     K('Заблокировали бота', 'tg_blocked', 'sum', 'база', { inv: true, color: crit }),
     K('Заблокировали бота · всего', 'tg_blocked_total', 'snap', 'база', { inv: true, color: crit }),
   ]);
-  const ascNote = 'Нет данных App Store Connect за эти недели: нужен вход в кабинет.';
+  const ascNote = 'В отчёте нет полного значения App Store Connect за выбранный период.';
   const secStores = grid([
     card({ t: 'Загрузки iOS', p: 'stores.ios_total_downloads', v: A.stores.ios_total_downloads ?? A.stores.ios_first_downloads, pv: P ? (P.stores.ios_total_downloads ?? P.stores.ios_first_downloads) : null, mode: 'sum', src: 'App Store Connect', empty: ascNote,
       series: [{ name: 'Первые', color: 'var(--s-ios)', get: w => g(w, 'stores.ios_first_downloads') }, { name: 'Повторные', color: muted, get: w => g(w, 'stores.ios_redownloads') }],
@@ -861,9 +861,9 @@ function render() {
     <div class="bhead"><h2 id="h-q">Качество</h2><p>Стабильность приложения и бэкенда, доставка уведомлений</p></div>
     <div class="grid2e">
       ${Q ? `<div class="panel"><div class="phead"><h3>Краши Android</h3><span class="mono">Crashlytics · ${esc(Q.crashPeriod)}</span></div>
-        <div class="stats"><div class="stat"><span class="eyebrow">Без крашей, польз.</span><span class="v num">${fmt(Q.androidCrashFreeUsers)}%</span></div><div class="stat"><span class="eyebrow">Без крашей, сессии</span><span class="v num">${fmt(Q.androidCrashFreeSessions)}%</span></div><div class="stat"><span class="eyebrow">Крашей</span><span class="v num">${Q.androidCrashes}</span><span class="muted" style="font-size:12px">у ${Q.androidCrashUsers} пользователей</span></div></div>
+        <div class="stats"><div class="stat"><span class="eyebrow">Без крашей, польз.</span><span class="v num">${fmt(Q.androidCrashFreeUsers)}%</span></div><div class="stat"><span class="eyebrow">Без крашей, сессии</span><span class="v num">${fmt(Q.androidCrashFreeSessions)}%</span></div><div class="stat"><span class="eyebrow">Крашей</span><span class="v num">${fmt(Q.androidCrashes)}</span>${Q.androidCrashUsers == null ? '' : `<span class="muted" style="font-size:12px">у ${fmt(Q.androidCrashUsers)} пользователей</span>`}</div></div>
         <div style="margin-top:14px">${Q.topCrashes.map(c => `<div class="crash"><div style="display:flex;justify-content:space-between;gap:10px"><span>${esc(c.title)}</span><span class="num muted" style="white-space:nowrap">${c.crashes} · ${c.users} польз.</span></div><span class="w">${esc(c.where)}</span></div>`).join('')}</div>
-        <p style="margin-top:10px;font-size:13.5px"><span class="lv critical">iOS</span> ${Q.iosUnprocessed} крашей не обработаны: нет dSYM-файлов.</p>${repNote}</div>` : ''}
+        ${Q.iosUnprocessed == null ? '' : `<p style="margin-top:10px;font-size:13.5px"><span class="lv critical">iOS</span> ${fmt(Q.iosUnprocessed)} крашей не обработаны: нет dSYM-файлов.</p>`}${repNote}</div>` : ''}
       <div class="panel" style="display:flex;flex-direction:column;gap:18px">
         ${Q ? `<div><div class="phead"><h3>Бэкенд${single ? '' : ' · ' + esc(repWeek.label)}</h3><span class="mono">логи Loki</span></div><div class="stats"><div class="stat"><span class="eyebrow">Ошибки</span><span class="v num">${Q.backendErrors}</span></div><div class="stat"><span class="eyebrow">Предупреждения</span><span class="v num">${Q.backendWarnings}</span></div><div class="stat"><span class="eyebrow">Рестарты</span><span class="v num">${Q.backendRestarts}</span><span class="muted" style="font-size:12px">неделей раньше: ${Q.backendRestartsPrev}</span></div></div></div>` : ''}
         <div><div class="phead"><h3>Уведомления за ${single ? 'неделю' : 'период'}</h3><span class="mono">база</span></div><div class="stats"><div class="stat"><span class="eyebrow">Push доставлены</span><span class="v num">${fmt(pushRate)}%</span><span class="muted" style="font-size:12px">${fmt(A.kpi.push_ok)} отправлено</span></div><div class="stat"><span class="eyebrow">Прочитано</span><span class="v num">${fmt(notifRate)}%</span>${delta(notifRate, P ? pct(P.kpi.notif_read, P.kpi.notif) : null)}</div></div></div>
@@ -945,7 +945,7 @@ function renderLanding() {
     const ct = c == null ? '—' : (c > 100 ? 'больше предыдущего шага: большинство ставит приложение не через лендинг' : fmt(c) + '% от предыдущего шага');
     return `${i ? `<div class="fconv">↓ ${ct}</div>` : ''}<div class="fstep"><div class="lbl">${esc(f.n)}<small>${esc(f.src)}</small></div><div class="fbar"><b style="width:${Math.max(0.5, (f.v || 0) / fmax * 100)}%"></b></div><div class="fv num">${fmt(f.v)}</div></div>`; }).join('');
   const stotal = LD.sources.rows.reduce((s, r) => s + r[1], 0);
-  const drows = range(first, end).reverse().map(d => { const r = day(d); return r ? `<tr><td>${esc(dayLabel(d))}</td><td>${r[ix('visits')]}</td><td>${r[ix('visitors')]}</td><td>${r[ix('views')]}</td><td>${r[ix('visits')] ? fmt(r[ix('bounce')]) + '%' : '—'}</td><td>${r[ix('visits')] ? tfmt(r[ix('timeSec')]) : '—'}</td><td>${r[ix('adVisits')]}</td><td>${r[ix('clicksAppStore')]}</td><td>${r[ix('clicksGooglePlay')]}</td></tr>` : ''; }).join('');
+  const drows = range(first, end).reverse().map(d => { const r = day(d); return r ? `<tr><td>${esc(dayLabel(d))}</td><td>${r[ix('visits')]}</td><td>${r[ix('visitors')]}</td><td>${r[ix('views')]}</td><td>${r[ix('visits')] ? fmt(r[ix('bounce')]) + '%' : '—'}</td><td>${r[ix('visits')] ? tfmt(r[ix('timeSec')]) : '—'}</td><td>${fmt(r[ix('adVisits')])}</td><td>${r[ix('clicksAppStore')]}</td><td>${r[ix('clicksGooglePlay')]}</td></tr>` : ''; }).join('');
   app.innerHTML = `
   <section class="hero one" aria-labelledby="h1">
     <div>
